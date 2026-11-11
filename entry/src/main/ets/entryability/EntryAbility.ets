@@ -1,3 +1,4 @@
+import { initCampusProfile } from '../utils/CampusConfig';
 
 import { AbilityConstant, Configuration, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -22,6 +23,7 @@ export default class EntryAbility extends UIAbility {
       console.error('onCreate ERROR: ' + JSON.stringify(error))
     }
     UnifiedPreferences.init(this.context); // 最先加载确保能读取配置
+    initCampusProfile(this.context);
     FunctionOrder.init(this.context);
     ScheduleStorage.init(this.context);
     ExamStorage.init(this.context);

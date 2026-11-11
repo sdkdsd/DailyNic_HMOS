@@ -18,6 +18,8 @@ function courseBarColor(color: string): string {
 @Entry(localStorage)
 @Component
 struct Class_schedule_dailyCard {
+  @LocalStorageProp('campusConfigured') campusConfigured: boolean = false;
+  @LocalStorageProp('periodTimes') periodTimes: string[][] = [['--:--', '--:--']];
   @LocalStorageProp('todayCourse') todayCourse: ScheduleSources.classAttribute[] = [];
   @LocalStorageProp('tomorrowCourse') tomorrowCourse: ScheduleSources.classAttribute[] = [];
   @LocalStorageProp('title') title: ResourceStr = '';
@@ -56,7 +58,7 @@ struct Class_schedule_dailyCard {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .visibility(course.teacher == '' ? Visibility.None : Visibility.Visible)
 
-      Text(`\udb80\udfdc ${ScheduleSources.commonClassTime[course.timeSpan[0]][0]}~${ScheduleSources.commonClassTime[course.timeSpan[course.timeSpan.length - 1]][1]}`)
+      Text(`\udb80\udfdc ${(this.periodTimes[course.timeSpan[0]] || ['--:--'])[0]}~${(this.periodTimes[course.timeSpan[course.timeSpan.length - 1]] || ['', '--:--'])[1]}`)
         .fontSize(11)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -87,7 +89,7 @@ struct Class_schedule_dailyCard {
             .height(40)
             .interpolation(ImageInterpolation.Medium)
             .opacity(0.9)
-          Text($r('app.string.no_class_today'))
+          Text(this.campusConfigured ? $r('app.string.no_class_today') : '请先在应用核对校历作息')
             .fontSize(11)
             .textAlign(TextAlign.Center)
             .opacity(0.7)

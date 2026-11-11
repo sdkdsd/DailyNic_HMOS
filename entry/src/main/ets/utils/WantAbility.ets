@@ -8,20 +8,12 @@ import { call } from "@kit.TelephonyKit";
 
 export class WantAbility {
   static StartQQ(hostContext: common.UIAbilityContext) {
-    hostContext.openLink("mqqapi://card/show_pslcard?src_type=internal&version=1&uin=931920982&card_type=group&source=external&jump_from=webapi",
-        { appLinkingOnly: false })
-      .catch((error: Error) => {
-        hostContext.startAbility({
-          action: 'ohos.want.action.viewData',
-          entities: ['entity.system.browsable'],
-          uri: 'https://qm.qq.com/q/MM3mA0VeW4'
-        });
-      });
+    WantAbility.openGitHub(hostContext);
   }
 
   static restart(hostContext: common.UIAbilityContext) {
     let want: Want = {
-      bundleName: 'com.nic.dailynic',
+      bundleName: 'com.sdkdsd.dailynic.sust',
       abilityName: 'EntryAbility'
     };
     try {
@@ -48,7 +40,7 @@ export class WantAbility {
     hostContext.startAbility({
       action: 'ohos.want.action.viewData',
       entities: ['entity.system.browsable'],
-      uri: 'https://github.com/Your-USTC/DailyNic_HMOS/issues'
+      uri: 'https://github.com/sdkdsd/DailyNic_HMOS/issues'
     }).catch((err: BusinessError) => {
       console.error(`startAbility failed, code is ${err.code}, message is ${err.message}`);
     });

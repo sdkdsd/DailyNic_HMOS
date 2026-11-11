@@ -1,3 +1,5 @@
+import { initCampusProfile, campusReady, classTimes } from '../utils/CampusConfig';
+import { teachingWeek, chinaWeekday } from '../utils/CampusTime';
 
 import { Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -17,6 +19,8 @@ const TAG: string = 'EntryFormAbility';
 const DOMAIN_NUMBER: number = 0xFF00;
 
 class FormDataClass {
+  campusConfigured: boolean = campusReady();
+  periodTimes: string[][] = classTimes.map((pair: string[]) => pair.slice());
   todayCourse: ScheduleSources.classAttribute[] = [];
   tomorrowCourse: ScheduleSources.classAttribute[] = [];
   title: ResourceStr = '';
@@ -34,21 +38,21 @@ class FormDataClass {
       const termStartTime: number = ScheduleManager.semesters[ScheduleManager.defaultSemester].beginTime;
 
       let currentWeek: number = 0;
-      if (this.currentTime < termStartTime) {
+      if (!campusReady() || this.currentTime < termStartTime) {
         currentWeek = 1;
         this.todayCourse = this.tomorrowCourse = [];
-      } else if (this.currentTime > termStartTime + ScheduleManager.semesters[ScheduleManager.defaultSemester].totalWeekNum * millisecondsPerWeek) {
+      } else if (this.currentTime >= termStartTime + ScheduleManager.semesters[ScheduleManager.defaultSemester].totalWeekNum * millisecondsPerWeek) {
         currentWeek = 1;
         this.todayCourse = this.tomorrowCourse =  [];
       } else {
-        currentWeek = Math.ceil((this.currentTime - termStartTime) / millisecondsPerWeek);
+        currentWeek = teachingWeek(this.currentTime, termStartTime);
 
         // const todayStart: number = new Date(currentTime).setHours(0, 0, 0, 0);
-        this.todayCourse = ScheduleManager.getDefaultClassByDay(currentWeek, currentTime.getDay())
+        this.todayCourse = ScheduleManager.getDefaultClassByDay(currentWeek, chinaWeekday(this.currentTime))
         // .filter(item => ScheduleSources.commonClassStamp[item.timeSpan[item.timeSpan.length - 1]][1] + todayStart > this.currentTime)
           .sort((a, b) => a.timeSpan[0] - b.timeSpan[0]);
 
-        this.tomorrowCourse = ScheduleManager.getDefaultClassByDay(currentWeek + (currentTime.getDay() === 6 ? 1 : 0), (currentTime.getDay() + 1) % 7)
+        this.tomorrowCourse = ScheduleManager.getDefaultClassByDay(currentWeek + (chinaWeekday(this.currentTime) === 0 ? 1 : 0), (chinaWeekday(this.currentTime) + 1) % 7)
           .sort((a, b) => a.timeSpan[0] - b.timeSpan[0]);
       }
 
@@ -106,6 +110,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
   onAddForm(want: Want) {
     // Called to return a FormBindingData object.
     UnifiedPreferences.init(this.context);
+    initCampusProfile(this.context);
     // 服务卡片运行在独立进程，必须强制重新读盘，避免使用陈旧内存缓存
     ScheduleStorage.init(this.context, true);
     ExamStorage.init(this.context, true);
@@ -134,6 +139,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
     */
     // Called to notify the form provider to update a specified form.
     UnifiedPreferences.init(this.context);
+    initCampusProfile(this.context);
     // 服务卡片运行在独立进程，必须强制重新读盘，避免使用陈旧内存缓存
     ScheduleStorage.init(this.context, true);
     ExamStorage.init(this.context, true);
@@ -153,9 +159,10 @@ export default class EntryFormAbility extends FormExtensionAbility {
   }
 
   onFormEvent(formId: string, message: string): void {
-    hilog.info(DOMAIN_NUMBER, TAG, `FormAbility onFormEvent, formId = ${formId}, message: ${JSON.stringify(message)}`);
+    hilog.info(DOMAIN_NUMBER, TAG, 'FormAbility onFormEvent');
 
     UnifiedPreferences.init(this.context);
+    initCampusProfile(this.context);
     // 服务卡片运行在独立进程，必须强制重新读盘，避免使用陈旧内存缓存
     ScheduleStorage.init(this.context, true);
     ExamStorage.init(this.context, true);
@@ -174,6 +181,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
 
   onRemoveForm(formId: string) {
     UnifiedPreferences.init(this.context);
+    initCampusProfile(this.context);
     ScheduleStorage.init(this.context, true);
     ExamStorage.init(this.context, true);
     UnifiedPreferences.deleteSync('CardType_id' + formId);

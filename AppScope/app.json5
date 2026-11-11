@@ -1,9 +1,9 @@
 {
   "app": {
-    "bundleName": "com.nic.dailynic",
+    "bundleName": "com.sdkdsd.dailynic.sust",
     "vendor": "$string:developer",
-    "versionCode": 2003000,
-    "versionName": "2.3.0",
+    "versionCode": 2003001,
+    "versionName": "2.3.0-sust.1",
     "icon": "$media:layered_image",
     "label": "$string:app_name"
   }

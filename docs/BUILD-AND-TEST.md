@@ -1,0 +1,54 @@
+# 构建、签名、设备验证和维护
+
+## 当前环境证据
+
+配置聊天“设置 DailyNic_HMOS”记录了在其运行实例安装工具链并构建**原版**未签名 HAP：SDK 26.0.1 Beta1，编译 SDK 26.0.1.120，target API 6.1.0(23)，minimum API 5.1.0(18)。该记录不是本次修改版构建结果。
+
+当前适配聊天挂载的是较早环境快照，实查没有 `/workspace/.cloud-tools/dailynic`、HarmonyOS SDK、Hvigor、OHPM、HDC、依赖目录或 `build-profile.json5`。`bash build.sh` 以退出码 2 停在找不到 Hvigor；**本次修改版未编译、未生成 HAP**。保存/发布环境配置与当前聊天实际挂载的快照不同，不能把另一个实例的产物当作本分支产物。需要后续把本分支交给已经就绪的环境，或在本机 DevEco Studio 构建。
+
+本聊天可操作的是云端 Linux，不是用户个人电脑。提供 `scripts/check-local-environment.ps1` 供 Windows 本机只读检查；尚未在个人电脑执行。脚本不安装软件、不更改系统设置、不连接手机。IDE 内工具不一定在 PATH，仍须核对 DevEco Studio 的 SDK Manager/版本信息。
+
+## 构建本分支
+
+1. 在已配置的环境或本机取出 `codex/sust-xian-foundation` 分支；先运行 `git status --short`，保留已有改动。
+2. 使用现有的激活脚本，或设置 `HVIGORW`、`DEVECO_SDK_HOME`、现有 Java/Node 路径。不要复用原 Windows `C:/Program Files/...` 的硬编码路径。已保存的云端激活脚本会被 `build.sh` 检测并加载。
+3. 如果 `build-profile.json5` 不存在，将根目录 `.bak` 复制为它。模板的 signingConfigs 为空，产品不引用不存在的 signingConfig，适合未签名构建。保留 target API 23，不因为 Beta 编译器提高 target；原 minimum API 18 与部分 API 23 调用存在兼容性声明风险，未证明支持低版本手机。
+4. 本版本不再导入 `Encryption.ets`；无需生成或复制上游 RSA 私钥。已部署环境中的旧开发测试密钥文件保持本地、被 Git 忽略，不用于本版本账号登录。后续清理可在确认无旧数据需求后由用户处理。
+5. 若依赖尚缺，先说明将安装哪些开发依赖，再用已安装 OHPM 执行 `ohpm install --all --no-save`，检查清单和锁文件差异，不升级依赖来掩盖错误。本次未执行软件安装或改变系统设置。
+6. 执行 `bash build.sh`。脚本用 `--no-daemon --no-parallel`，不会停止用户已有 daemon。成功后由 `scripts/inspect_hap.py` 核对包身份、ZIP 完整性、SDK 字段和 SHA-256。它不验证签名或手机运行。IDE 已生成签名包时可向检查脚本显式传入该文件路径。
+7. 使用 Node 24 执行 `node --test tests/*.test.mjs`；不依赖 npm install。Node 的类型语法剥离只用于主机测试，不能替代 ArkTS 编译和 Hypium/真机测试。
+
+包名为 **com.sdkdsd.dailynic.sust**，原包名为 com.nic.dailynic。重启、桌面卡片添加和快捷方式均使用新包名，日历账户也独立命名，避免覆盖原应用及其日历。新包名必须对应自己的调试 Profile；不能复用原作者签名。
+
+## 正规个人调试签名与安装
+
+参考华为官方 [自动签名](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/ide-signing-auto/)、[调试 Profile](https://developer.huawei.com/consumer/cn/doc/App/agc-help-add-debugprofile-0000001914423102/) 和 [真机运行](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V5/ide-run-device-V5/)。SDK 版本见 [26.0.0 Release](https://developer.huawei.com/consumer/cn/doc/harmonyos-releases/overview-2600) 与 [26.0.1 Beta1](https://developer.huawei.com/consumer/cn/doc/harmonyos-releases/overview-2601)。Beta 编译器不等于正式发布就绪，不凭“鸿蒙 7”名称推断全部 API 可用。
+
+待用户方便时，由用户在自己的 DevEco Studio/华为官方安全页面登录开发者账号。以当前官方页面的实名/账号要求为准，不沿用上游 README“无需实名认证”的承诺。选择 HarmonyOS 调试签名，确认应用包名与连接设备，使用 IDE 的自动签名功能生成个人调试证书/Profile。调试 Profile 必须包含该设备的授权信息；证书有效期、设备额度等以官方当前规则为准。
+
+**用户需先知情并自行完成**：安装/更新 DevEco 或 SDK（如需要）、启用开发者模式/USB 调试、信任连接电脑、设备验证、任何费用确认。这些改变系统设置或账号状态的步骤本次均未执行。不要关闭证书校验、使用第三方代签、共享证书密码或借用他人设备 Profile。
+
+本地 `build-profile.json5`、`local.properties`、`.p12/.pfx/.p7b/.cer/.pem/.key`、密码和会话信息不能进入 Git。不要通过聊天发送签名密码、私钥、账号 Cookie 或完整配置截图。调试签名完成后，使用 IDE Run 安装并启动到用户手机；也可由本人用已配置 HDC 安装其生成的**已签名** HAP。未签名 HAP 不能当作可安装交付。当前没有执行任何安装。
+
+## 真机验收清单（全未执行）
+
+| 场景 | 必须观察的结果 |
+| --- | --- |
+| 首次启动、冷启动、恢复模式 | 不要求学校密码；无课表时进入核对配置；没有示例个人课程；重启保留数据 |
+| 原应用共存 | 两个包并存，快捷方式和卡片打开本版本，不修改原包数据/日历 |
+| 课表 | 官方首周、周一/周日、单/双周、连堂、30 周边界、最后一周结束准确；教学时间按北京时间 |
+| 作息 | 未配置不能生成课程提醒；非法输入不保存；切换配置后页面、首页、卡片一致；夏冬季/调课仍需人工处理 |
+| 备份 | 旧版或课时不匹配被拒绝且不改现有数据；本版合法备份追加学期；重启仍在 |
+| 考试/待办 | 新增、修改、删除、完成状态、图片、重启恢复、倒计时正确 |
+| 日历提醒 | 授权拒绝时可恢复；仅操作本 fork 日历；单双周排除日期正确；锁屏提醒可达；重复生成无重复条目 |
+| 三种桌面卡片 | 添加/更新/删除、午夜跨周、应用关闭后刷新、修改配置后刷新、不显示旧学校课时 |
+| 官方网页 | 系统浏览器正确跳转，用户自行登录；应用没有凭据弹窗、桥接或自动提交 |
+| 视觉 | 手机横竖屏、浅深色、背景、字体缩放、分栏符合预期 |
+
+日历的原实现使用异步创建/删除及延迟任务，设备级并发、拒绝授权和系统提醒可靠性必须实测，主机日期测试不覆盖这些行为。桌面卡片频率受系统策略影响，不能承诺精确每分钟更新。
+
+## 后续维护
+
+保留本分支的 GPL 源码，学校配置和适配边界集中在 `CampusConfig.ets`、`CampusTime.ts`、`Links.ets`、说明页。学校登录/接口变动时先更新 `SUST-RESEARCH.md` 的证据，再改解析器；不要恢复旧密码桥接。接入新数据源需有脱敏输入样本、拒绝未知格式的测试、导入预览和本人确认。
+
+每次升级先备份个人数据，在自己的 fork 分支合并上游；检查包名、课时、星期映射、安全隔离和许可证。先跑主机测试，再用真实 SDK 构建，最后执行上述设备清单，逐项更新 `ADAPTATION.md`。不要把本分支直接提交给原作者，也不要从原项目应用市场链接分发这个修改版本。

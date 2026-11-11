@@ -1,3 +1,4 @@
+import { campusReady } from './CampusConfig';
 
 import { calendarManager } from "@kit.CalendarKit";
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -19,13 +20,13 @@ class WriteCalendar {
   grantWriteCalendar: boolean = false;
 
   readonly calendarAccount: calendarManager.CalendarAccount = {
-    name: 'YourUSTC.class_notification',
+    name: 'SustPersonal.class_notification',
     type: calendarManager.CalendarType.LOCAL,
     // 日历账户显示名称，该字段如果不填，创建的日历账户在界面显示为空字符串。
     displayName: "妮可之记上课提醒"
   };
   readonly calendarAccount_exam: calendarManager.CalendarAccount = {
-    name: 'YourUSTC.exam_notification',
+    name: 'SustPersonal.exam_notification',
     type: calendarManager.CalendarType.LOCAL,
     // 日历账户显示名称，该字段如果不填，创建的日历账户在界面显示为空字符串。
     displayName: "妮可之记考试提醒"
@@ -199,6 +200,10 @@ class WriteCalendar {
   }
 
   setClassCalendar() { // index 2
+    if (!campusReady()) {
+      this.showMessage('请先核对西安校区的校历与课时，当前不能生成课程提醒');
+      return;
+    }
     let selected3: number = 0;
     switch (ScheduleSources.remindBefore[0]) {
       case 10: selected3 = 1; break;

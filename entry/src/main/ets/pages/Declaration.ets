@@ -148,6 +148,8 @@ struct Declaration {
   @Builder
   agreementSheet() {
     Web({ src: $rawfile('TermsOfUse.html'), controller: this.webController })
+      .javaScriptAccess(false)
+      .domStorageAccess(false)
       .height('100%')
       .width('100%')
       .darkMode(WebDarkMode.Auto)

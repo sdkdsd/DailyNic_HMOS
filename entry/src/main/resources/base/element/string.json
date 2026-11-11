@@ -10,7 +10,7 @@
     },
     {
       "name": "EntryAbility_label",
-      "value": "妮可之记"
+      "value": "妮可之记·陕科大"
     },
     {
       "name": "page_start",
@@ -74,15 +74,15 @@
     },
     {
       "name": "all_semesters_intro",
-      "value": "上限20周，周日是一周首日"
+      "value": "上限30周，教学周从周一开始（北京时间）"
     },
     {
       "name": "all_semesters_total_week",
-      "value": "\u3000总周数：%d"
+      "value": "　总周数：%d"
     },
     {
       "name": "all_semesters_source",
-      "value": "\u3000\u3000来源："
+      "value": "　　来源："
     },
     {
       "name": "all_semesters_create_time",
@@ -746,11 +746,11 @@
     },
     {
       "name": "egg_hint1",
-      "value": "\uD835\uDC6A\uD835\uDC8A\uD835\uDC82\uD835\uDC8D\uD835\uDC8D\uD835\uDC90\uff5e(\u2220\u30fb\u03c9 < )\u2312\u2605"
+      "value": "𝑪𝒊𝒂𝒍𝒍𝒐～(∠・ω < )⌒★"
     },
     {
       "name": "egg_hint2",
-      "value": "\u2606\u2312( > \u03c9\u30fb\u2220)\uff5eoll\u0250\u0131\u0254"
+      "value": "☆⌒( > ω・∠)～ollɐıɔ"
     },
     {
       "name": "have_cleared",
@@ -858,7 +858,7 @@
     },
     {
       "name": "welcome_to_your_ustc",
-      "value": "\uD83D\uDC4B欢迎来到「妮可之记」!\uD83D\uDC4B"
+      "value": "妮可之记 · 陕科大个人版"
     },
     {
       "name": "version",
@@ -882,7 +882,7 @@
     },
     {
       "name": "runtime_error",
-      "value": "(\uff61\u2022\u0301\ufe3f\u2022\u0300\uff61)\n上次运行时可能发生了错误，你可以："
+      "value": "(｡•́︿•̀｡)\n上次运行时可能发生了错误，你可以："
     },
     {
       "name": "dangerous_behavior",
@@ -930,11 +930,11 @@
     },
     {
       "name": "normal_restart",
-      "value": "\uDB80\uDC37 尝试正常重新启动"
+      "value": "󰀷 尝试正常重新启动"
     },
     {
       "name": "import_from_clipboard_failed",
-      "value": "格式不正确 \u2022\u1dc4\u0847\u2022\u1dc5  请检查是否复制了完整的字符串"
+      "value": "格式不正确 •᷄ࡇ•᷅  请检查是否复制了完整的字符串"
     },
     {
       "name": "empty_clipboard",
@@ -962,11 +962,11 @@
     },
     {
       "name": "no_association2",
-      "value": "　　本应用由中国科学技术大学学生自主开发，专为该校全日制本科生提供便利。应用内涉及到的中国科学技术大学相关网站资源、视觉素材、标识等内容，其著作权、所有权均归属中国科学技术大学。本应用全程未使用任何官方标识或表述，未在应用介绍或任何界面中以任何方式宣称、暗示自身为「官方应用」或与校方存在合作关系；「功能」板块仅为官方平台快捷跳转入口。本应用所有非网页、非其他公司版权所有的图标内容（包括但不限于文字、图片、功能界面）均为开发者独立创作，不代表中国科学技术大学官方观点及立场。"
+      "value": "本版本由 sdkdsd 在 YourUSTC 的 GPL 开源项目基础上修改，面向陕西科技大学西安校区个人开发测试。它不是学校官方应用，也不是原作者的官方发行版。官方完整作息与在线教务接口仍待核对；尚未适配的功能会明确标注。"
     },
     {
       "name": "no_association3",
-      "value": "我已知晓并承认“妮可之记”由中科大学生独立开发，与中国科学技术大学官方无任何关联"
+      "value": "本版本由 sdkdsd 基于 YourUSTC 开源项目修改，与陕西科技大学及原项目官方发布均无隶属关系。"
     },
     {
       "name": "choose_school",
@@ -978,15 +978,15 @@
     },
     {
       "name": "github",
-      "value": "在 GitHub 上为我们点亮\uD83C\uDF1F"
+      "value": "在 GitHub 上为我们点亮🌟"
     },
     {
       "name": "last_step",
-      "value": "\uDB80\uDCDA  上一步"
+      "value": "󰃚  上一步"
     },
     {
       "name": "next_step",
-      "value": "下一步  \uDB80\uDCD9"
+      "value": "下一步  󰃙"
     },
     {
       "name": "nic_launch",
@@ -1014,7 +1014,7 @@
     },
     {
       "name": "join_qq_group",
-      "value": "加入QQ交流群"
+      "value": "本版本反馈"
     },
     {
       "name": "beian_query",
@@ -1046,11 +1046,11 @@
     },
     {
       "name": "copy_failed",
-      "value": "复制失败 \u252d\u252e\ufe4f\u252d\u252e"
+      "value": "复制失败 ┭┮﹏┭┮"
     },
     {
       "name": "save_image_success",
-      "value": "我在相册里等你哦 (\u2044 \u2044\u2022\u2044\u03c9\u2044\u2022\u2044 \u2044)"
+      "value": "我在相册里等你哦 (⁄ ⁄•⁄ω⁄•⁄ ⁄)"
     },
     {
       "name": "save_image_fail",
@@ -1062,15 +1062,15 @@
     },
     {
       "name": "save_file_cancel",
-      "value": "已取消保存\u2022\u1dc4\u0847\u2022\u1dc5"
+      "value": "已取消保存•᷄ࡇ•᷅"
     },
     {
       "name": "read_file_cancel",
-      "value": "\u2022\u1dc4\u0847\u2022\u1dc5已取消或权限获取失败，请重启应用后重试"
+      "value": "•᷄ࡇ•᷅已取消或权限获取失败，请重启应用后重试"
     },
     {
       "name": "read_file_format_error",
-      "value": "文件格式不正确 \u2022\u1dc4\u0847\u2022\u1dc5"
+      "value": "文件格式不正确 •᷄ࡇ•᷅"
     },
     {
       "name": "downloading_d",
@@ -1082,7 +1082,7 @@
     },
     {
       "name": "download_finish",
-      "value": "下载完毕(\uff61\u2022\u0300\u1d17-)\u2727"
+      "value": "下载完毕(｡•̀ᴗ-)✧"
     },
     {
       "name": "open_file_manager",

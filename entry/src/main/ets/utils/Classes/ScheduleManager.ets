@@ -1,8 +1,9 @@
+import { campusReady, firstTeachingMonday } from '../CampusConfig';
 // 用于管理多学期的 ScheduleManager
 
 import * as ScheduleStorage from '../ScheduleStorage';
 import { classAttribute, COVER_MODE, semesterAttribute } from '../../constants/ScheduleSources';
-import { colorSet, colorSetLen, extractCredits, getRandomInt } from '../tools';
+import { colorSet, colorSetLen, getRandomInt } from '../tools';
 
 function areNumberArraysEqual(a: number[], b: number[]): boolean {
   if (a.length !== b.length) return false;
@@ -62,11 +63,13 @@ class ScheduleManager {
   init() {
     // 读取所有学期的信息
     this.semesters = ScheduleStorage.getSemesters();
-    this.setDefaultSemester(this.displaySemester = ScheduleStorage.getDefaultSemester()); // 默认第一个是课表
     if (this.semesters.length === 0) { // 如果是第一次使用
       const currentTime = new Date();
-      this.newSemester('默认', '初始自动生成', new Date(new Date(currentTime).setDate(currentTime.getDate() - currentTime.getDay())).setHours(0, 0, 0, 0), currentTime.getTime());
+      this.newSemester('待核对学期', '个人配置（非学校同步）', firstTeachingMonday(), currentTime.getTime());
     }
+    const savedDefault: number = ScheduleStorage.getDefaultSemester();
+    this.displaySemester = Number.isInteger(savedDefault) && savedDefault >= 0 && savedDefault < this.semesters.length ? savedDefault : 0;
+    this.setDefaultSemester(this.displaySemester);
     this.rebuildDisplayIndex(ScheduleStorage.getCourses(this.semesters[this.displaySemester].createTime));
   }
 
@@ -144,6 +147,7 @@ class ScheduleManager {
    * @returns 课程列表
    */
   getDefaultClassByDay(week: number, day: number, needSort: boolean = false): classAttribute[] {
+    if (!campusReady()) return [];
     if (!needSort)
       return this.defaultIndex.get(week)?.get(day) || [];
     const unsorted: classAttribute[] = this.defaultIndex.get(week)?.get(day) || [];
@@ -425,56 +429,7 @@ class ScheduleManager {
   }
 
 
-  /**
-   * 解析在线课程表数据，将多层嵌套的课程数据扁平化
-   * @param originData 原始的三层嵌套课程数据结构 [][][]
-   * @param fillAll 是否补充颜色和优先级属性
-   * @returns 扁平化后的课程属性数组，已处理在线课表缺失或待处理的课程ID、学分、优先级、颜色等信息
-   */
-  parseOnlineSchedule(originData: classAttribute[][][], fillAll: boolean = false): classAttribute[] {
-    const parsedData: classAttribute[] = [];
-    if (fillAll) {
-      const nameToColor: Map<string, number> = new Map<string, number>();
-      let randomColor: number = getRandomInt(0, colorSetLen - 1);
-      originData.forEach(layer1 => {
-        layer1?.forEach(layer2 => {
-          layer2?.forEach(layer3 => {
-            if (layer3) {
-              let sep: string[] = extractCredits(layer3.id);
-              layer3.dayOfWeek = (layer3.dayOfWeek + 1) % 7;
-              layer3.id = sep[0];
-              layer3.credits = sep[1];
-              layer3.priority = 5;
-              if (nameToColor.has(layer3.name))
-                layer3.color = colorSet[nameToColor.get(layer3.name)!];
-              else {
-                layer3.color = colorSet[randomColor];
-                nameToColor.set(layer3.name, randomColor);
-                randomColor = (randomColor + 1) % colorSetLen;
-              }
-              parsedData.push(layer3);
-            }
-          });
-        });
-      });
-    } else {
-      originData.forEach(layer1 => {
-        layer1?.forEach(layer2 => {
-          layer2?.forEach(layer3 => {
-            if (layer3) {
-              let sep: string[] = extractCredits(layer3.id);
-              layer3.dayOfWeek = (layer3.dayOfWeek + 1) % 7;
-              layer3.id = sep[0];
-              layer3.credits = sep[1];
-              parsedData.push(layer3);
-            }
-          });
-        });
-      });
-    }
-    return parsedData;
-  }
-
+  // The USTC-only online parser is intentionally absent from this fork.
   toppingSemester(target: number): string | undefined {
     try {
       if (this.displaySemester === target)

@@ -1,3 +1,4 @@
+import { classTimestamp } from './CampusTime';
 import { common } from "@kit.AbilityKit";
 import { fileIo, fileUri, picker } from "@kit.CoreFileKit";
 import { BusinessError } from "@kit.BasicServicesKit";
@@ -148,10 +149,7 @@ export function shrinkContArrayToString(array: number[]):string {
 }
 
 export function getClassTimestamp(termBeginDate: number, week: number, day: number, surplus: number): number {
-  return termBeginDate
-    + (week - 1) * 604800000    // 第几周
-    + day * 86400000            // 第几天，不-1是因为教务系统中一周从周日开始
-    + surplus;                  // 第几节课结束
+  return classTimestamp(termBeginDate, week, day, surplus);
 }
 
 function timestampToDateTime(timestamp: number, format: string = 'yyyy-MM-DD'): string {
@@ -344,72 +342,3 @@ export async function readStringFromFile(context: UIContext, suffixChoices: stri
     return 'null';
   }
 }
-
-export const fillInformationJS = `
-(() => {
-    const inputUID = infoProvider.getUID();
-    const inputPwd = infoProvider.getPassword();
-    const main = () => {
-        const nodeUID = document.getElementById('nameInput');
-        const nodePassword = document.querySelector('input[type="password"][maxlength="200"]');
-        if (nodeUID && nodePassword) {
-            if (inputPwd) {
-              document.querySelector('div.eyes-icon.ng-star-inserted').style.pointerEvents = 'none';
-            }
-            nodeUID.focus();
-            nodeUID.value = infoProvider.getUID();
-            nodeUID.dispatchEvent(new Event('input', { bubbles: true }));
-            nodePassword.focus();
-            nodePassword.value = infoProvider.getPassword();
-            nodePassword.dispatchEvent(new Event('input', { bubbles: true }));
-            document.getElementById('submitBtn').dispatchEvent(
-                new MouseEvent('click', { bubbles: true, cancelable: true })
-            );
-            return true;
-        } else { return false; }
-    }
-    if (main()) { return; }
-    const observer = new MutationObserver(() => {
-        if (main()) { observer.disconnect(); }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-})();
-`
-
-// 删除智慧门户中的AI助手
-export const deleteAIHelper: string = `
-function removeTargetElement() {
-    const targetElement = Array.from(document.querySelectorAll('.dh-cl-item-name')).find(
-        el => el.textContent.trim() === "AI助手"
-    );
-    if (targetElement) {
-        const parentItem = targetElement.closest('.dh-cl-item');
-        if (parentItem) {
-            parentItem.remove();
-            return true;
-        }
-    }
-    return false;
-}
-const isRemoved = removeTargetElement();
-if (!isRemoved || true) {
-    const observerConfig = {
-        childList: true,
-        subtree: true
-    };
-    const callback = function(mutationsList) {
-        for(let mutation of mutationsList) {
-            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                removeTargetElement();
-            }
-        }
-    };
-    const observer = new MutationObserver(callback);
-    const targetNode = document.querySelector('.hd-zs') || document.body;
-    observer.observe(targetNode, observerConfig);
-    setTimeout(() => {
-        observer.disconnect();
-        console.log('监听超时，已停止');
-    }, 10000);
-}
-`

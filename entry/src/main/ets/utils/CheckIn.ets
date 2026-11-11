@@ -1,3 +1,4 @@
+import { teachingWeek, chinaWeekday } from './CampusTime';
 
 import UnifiedPreferences, { LAST_DAY_KEY, TOTAL_DAYS_KEY, CONSECUTIVE_DAYS_KEY, CONTENT_KEY, millisecondsPerWeek } from '../utils/UnifyPreference';
 import ScheduleManager from './Classes/ScheduleManager';
@@ -207,11 +208,11 @@ export class CheckInTools {
     if (now.getTime() < semester.beginTime) { // 学期未开始
       return false;
     }
-    if (now.getTime() > semester.beginTime + semester.totalWeekNum * millisecondsPerWeek) { // 学期已结束
+    if (now.getTime() >= semester.beginTime + semester.totalWeekNum * millisecondsPerWeek) { // 学期已结束
       return false;
     }
-    const currentWeek = Math.ceil((now.getTime() - semester.beginTime) / millisecondsPerWeek);
-    return ScheduleManager.getDefaultClassByDay(currentWeek, now.getDay()).length > 0;
+    const currentWeek = teachingWeek(now.getTime(), semester.beginTime);
+    return ScheduleManager.getDefaultClassByDay(currentWeek, chinaWeekday(now.getTime())).length > 0;
   }
 
   /**

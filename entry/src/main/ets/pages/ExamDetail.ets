@@ -377,7 +377,6 @@ struct ExamDetail {
       action: () => {
         this.pathStack.pushPath({
           name: "GetSchedule",
-          param: [$r('app.string.online_exam_info'), 'https://jw.ustc.edu.cn/for-std/exam-arrange'],
           onPop: (popInfo: PopInfo) => {
             if (typeof popInfo.result === "string") {
               const routerParams: string = popInfo.result;

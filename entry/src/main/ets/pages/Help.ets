@@ -1,110 +1,28 @@
-
-import { LengthUnit } from '@kit.ArkUI';
-import { getContArray } from '../utils/tools';
 import BackgroundImage from '../utils/BgImageManager';
-import { common } from '@kit.AbilityKit';
-import { WantAbility } from '../utils/WantAbility';
 
 @Builder
-export function HelpBuilder(name: string, param?: Object) {
-  Help();
-}
+export function HelpBuilder(name: string, param?: Object) { Help(); }
 
-@Entry
 @Component
 struct Help {
-  @State isContentShow: boolean[] = new Array(15).fill(false);
-  context: UIContext = this.getUIContext();
-  @State rotateAngle: number[] = new Array(15).fill(0);
-
-  menuItems: Array<NavigationMenuItem> = [
-    {
-      value: $r('app.string.join_qq_group'),
-      icon: $r('app.media.message_on_message'),
-      action: () => {
-        WantAbility.StartQQ(this.getUIContext().getHostContext() as common.UIAbilityContext);
-      }
-    }
-  ];
   pathStack: NavPathStack = new NavPathStack();
   build() {
     NavDestination() {
-      List() {
-        ForEach(getContArray([[0, 11]]), (index: number) => {
-          ListItem() {
-            Column() {
-              Row() {
-                Text($r(`app.string.help${index}_title`))
-                  .margin({ right: 15 })
-                  .fontWeight(FontWeight.Bold);
-                Image($r('app.media.chevron_right'))
-                  .height(20)
-                  .rotate({ angle: this.rotateAngle[index] })
-                  .animation({
-                    duration: 300,
-                    curve: Curve.Friction,
-                    playMode: PlayMode.Alternate,
-                    expectedFrameRateRange: {
-                      min: 20,
-                      max: 120,
-                      expected: 90,
-                    }
-                  });
-              }
-              .padding({ left: 16, right: 16, top: 12, bottom: 12 })
-              .width('100%')
-              .justifyContent(FlexAlign.SpaceBetween)
-              .onClick(() => {
-                this.context.animateTo({
-                  // 设置按钮收起展开动画效果
-                  duration: 300,
-                  // onFinish: () => {}
-                }, () => {
-                  this.isContentShow[index] = !this.isContentShow[index];
-                });
-                if (this.rotateAngle[index] === 0)
-                  this.rotateAngle[index] = 90;
-                else
-                  this.rotateAngle[index] = 0;
-              });
-
-              if (this.isContentShow[index]) { // 判断当前按钮为“收起”显示内容区域
-                Divider()
-                  .color($r('app.color.grid_border'));
-
-                Text($r(`app.string.help${index}_content`))
-                  .backgroundColor(BackgroundImage.showImage ? undefined : $r('app.color.help_context'))
-                  .borderRadius({ bottomLeft: 20, bottomRight: 20 })
-                  .textAlign(TextAlign.Start)
-                  .lineSpacing({ value: 5, unit: LengthUnit.FP })
-                  .width('100%')
-                  .padding({ top: 10, bottom: 10, left: 20, right: 20 })
-              }
-            }
-            .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : undefined)
-            .backgroundBlurStyle(BackgroundImage.blurLevel)
-            .width('100%')
-            .margin({ top: 10 })
-            .borderRadius(20);
-          };
-        });
+      Scroll() {
+        Column({ space: 18 }) {
+          Text('陕科大西安校区 · 使用说明').fontSize(22).fontWeight(FontWeight.Bold)
+          Text('1. 先核对校历首周周一和实际节次作息，再到本地课表添加学期、课程。学校官方作息尚未预置。所有教学日期按北京时间计算，星期一至星期日属于同一教学周。').width('100%')
+          Text('2. 单双周按第 1、2、3…教学周选择。可以输入周次表达式，也可以逐周勾选。节假日补课、夏冬季自动切换尚未实现，请逐项核对，必要时用独立待办记录调课。').width('100%')
+          Text('3. 考试与待办可手动录入。课表导入仅接受本版本导出的备份 JSON，且要求课时一致；不支持将旧中科大备份、学校网页或 Excel 直接导入。备份会追加学期，不覆盖已有课程。').width('100%')
+          Text('4. 课表、考试和待办卡片保留。课表卡片使用同一份个人课时设置，刷新由系统调度，需真机验证。提醒需要你主动授权系统日历。改变作息或课程后应重新生成课程日历并核对结果。').width('100%')
+          Text('5. 官方门户在系统浏览器打开。应用不保存密码、不提取 Cookie、不自动登录、不提交选课或预约。在线课表、考试、选课目录、作业导入、教室查询尚未适配。').width('100%')
+          Text('6. 首页签到仅为本地趣味打卡，不是学校签到。主题、背景、自定义头像、本地答题沿用原项目。').width('100%')
+          Button('课时与校历设置').onClick(() => this.pathStack.pushPath({ name: 'CampusSetup' }))
+          Button('在线服务适配状态').onClick(() => this.pathStack.pushPath({ name: 'GetSchedule' }))
+        }.padding(24).width('100%')
       }
-      .contentEndOffset(50)
-      .padding({ left: 15, right: 15 })
-      .margin({ left: 12, right: 12 })
-      .scrollBar(BarState.Auto)
-      .height('100%')
-      .width('100%');
-    }
-    .title($r('app.string.help'), {
-      backgroundBlurStyle: BackgroundImage.blurLevel,
-      backgroundColor: BackgroundImage.blurLevel === undefined ? BackgroundImage.titleBackgroundColor : undefined
-    })
-    .menus(this.menuItems)
-    .backButtonIcon($r('app.media.close'))
+    }.title('帮助')
     .backgroundColor(BackgroundImage.showImage ? '#0000' : $r('app.color.normal_background'))
-    .onReady((context: NavDestinationContext) => {
-      this.pathStack = context.pathStack;
-    })
+    .onReady((context: NavDestinationContext) => { this.pathStack = context.pathStack; })
   }
 }
