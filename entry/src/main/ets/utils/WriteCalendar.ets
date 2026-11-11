@@ -1,410 +1,136 @@
-import { campusReady } from './CampusConfig';
-
-import { calendarManager } from "@kit.CalendarKit";
-import { BusinessError } from '@kit.BasicServicesKit';
-import { abilityAccessCtrl, bundleManager, PermissionRequestResult } from "@kit.AbilityKit";
-
-import * as tools from './tools';
-import examManager from "./ExamManager";
+import { campusReady, classTimes } from './CampusConfig';
+import { calendarManager } from '@kit.CalendarKit';
+import { abilityAccessCtrl, bundleManager } from '@kit.AbilityKit';
+import { CalendarSync } from './CalendarSync';
+import { courseEvents, examEvents } from './CalendarEvents';
+import examManager from './ExamManager';
 import ScheduleManager from './Classes/ScheduleManager';
 import * as ScheduleStorage from './ScheduleStorage';
 import * as ScheduleSources from '../constants/ScheduleSources';
 
-
 class WriteCalendar {
   calendarMgr: calendarManager.CalendarManager | null = null;
   context: UIContext | null = null;
+  private permissionPending: boolean = false;
+  private writer: CalendarSync = new CalendarSync();
   readonly atManager: abilityAccessCtrl.AtManager = abilityAccessCtrl.createAtManager();
-  readonly tokenID: number = bundleManager.getBundleInfoForSelfSync(0x00000001/*GET_BUNDLE_INFO_WITH_APPLICATION*/).appInfo.accessTokenId;
-  grantReadCalendar: boolean = false;
-  grantWriteCalendar: boolean = false;
-
   readonly calendarAccount: calendarManager.CalendarAccount = {
-    name: 'SustPersonal.class_notification',
-    type: calendarManager.CalendarType.LOCAL,
-    // 日历账户显示名称，该字段如果不填，创建的日历账户在界面显示为空字符串。
-    displayName: "妮可之记上课提醒"
+    name: 'SustPersonal.class_notification', type: calendarManager.CalendarType.LOCAL,
+    displayName: '妮可之记上课提醒'
   };
   readonly calendarAccount_exam: calendarManager.CalendarAccount = {
-    name: 'SustPersonal.exam_notification',
-    type: calendarManager.CalendarType.LOCAL,
-    // 日历账户显示名称，该字段如果不填，创建的日历账户在界面显示为空字符串。
-    displayName: "妮可之记考试提醒"
+    name: 'SustPersonal.exam_notification', type: calendarManager.CalendarType.LOCAL,
+    displayName: '妮可之记考试提醒'
   };
 
-  initializeCalendar(newContext: UIContext) {
-    this.context = newContext;
-  }
+  initializeCalendar(context: UIContext): void { this.context = context; }
 
-  showMessage(message: string | ResourceStr, duration?: number) {
-    try {
-      this.context?.getPromptAction().showToast({
-        message: message,
-        duration: duration
-      });
-    } catch (error) {
-      console.error(`ShowToast ERROR: [${error.name}] ${error.message}`);
-    }
+  showMessage(message: string | ResourceStr): void {
+    try { this.context?.getPromptAction().showToast({ message: message }); } catch (_) {}
   }
-
 
   askForCalendar(index: number): boolean {
-    if (this.grantReadCalendar && this.grantWriteCalendar) {
-      if (this.calendarMgr === null) {
-        this.calendarMgr = calendarManager.getCalendarManager(this.context?.getHostContext());
+    if (this.permissionPending) { this.showMessage('正在申请日历权限，请稍候'); return false; }
+    try {
+      const context = this.context?.getHostContext();
+      if (!context) throw new Error('页面尚未就绪');
+      const token = bundleManager.getBundleInfoForSelfSync(1).appInfo.accessTokenId;
+      const read = this.atManager.checkAccessTokenSync(token, 'ohos.permission.READ_CALENDAR');
+      const write = this.atManager.checkAccessTokenSync(token, 'ohos.permission.WRITE_CALENDAR');
+      // Recheck every operation: permission can be revoked while the app is in the background.
+      if (read === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED && write === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
+        this.calendarMgr = calendarManager.getCalendarManager(context);
+        return true;
       }
-      return true;
-    }
-    if (this.atManager.checkAccessTokenSync(this.tokenID, 'ohos.permission.READ_CALENDAR') === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
-      this.grantReadCalendar = true;
-    }
-    if (this.atManager.checkAccessTokenSync(this.tokenID, 'ohos.permission.WRITE_CALENDAR') === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
-      this.grantWriteCalendar = true;
-    }
-    if (this.grantReadCalendar && this.grantWriteCalendar) {
-      if (this.calendarMgr === null){
-        this.calendarMgr = calendarManager.getCalendarManager(this.context?.getHostContext());
-      }
-      return true;
-    }
-
-    this.atManager.requestPermissionsFromUser(this.context?.getHostContext(), ['ohos.permission.READ_CALENDAR', 'ohos.permission.WRITE_CALENDAR'], (err: BusinessError, data: PermissionRequestResult) => {
-      if (err) {
-        console.error(`requestPermissionsFromUser fail, code: ${err.code}, message: ${err.message}`);
-        return false;
-      } else {
-        // console.info(`requestPermissionsFromUser success, result: ${data}`);
-        // console.info('requestPermissionsFromUser data permissions:' + data.permissions);
-        // console.info('requestPermissionsFromUser data authResults:' + data.authResults);
-        // console.info('requestPermissionsFromUser data dialogShownResults:' + data.dialogShownResults);
-        if (data.authResults[0] + data.authResults[1] === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
-          // 两个权限都获取了
-          this.grantReadCalendar = true;
-          this.grantWriteCalendar = true;
-          if (this.calendarMgr === null) {
-            this.calendarMgr = calendarManager.getCalendarManager(this.context?.getHostContext());
-          }
+      this.permissionPending = true;
+      this.atManager.requestPermissionsFromUser(context,
+        ['ohos.permission.READ_CALENDAR', 'ohos.permission.WRITE_CALENDAR']).then((result) => {
+        if (result.authResults.length === 2 && result.authResults.every((status: number) =>
+          status === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED)) {
+          this.calendarMgr = calendarManager.getCalendarManager(context);
           this.executeCorresponding(index);
-          return true;
         } else {
-          // 没获取
-          if (data.dialogShownResults !== undefined && data.dialogShownResults[0] === true && data.dialogShownResults[1] === true) {
-            // 如果用户授权过
-            this.showMessage($r('app.string.denied_calendar_permission'));
-            return false;
-          } else {
-            // 如果用户没授权过
-            this.calendar_permission_denied({ code: 1, name: 'test', message: 'GetCalendar error!' }, index);
-            return false;
-          }
+          this.calendarMgr = null;
+          this.showMessage('未获得日历读写权限；可在系统设置中授权后重试');
         }
-      }
-    });
+      }).catch(() => {
+        this.calendarMgr = null;
+        this.showMessage('日历权限申请失败，请稍后重试');
+      }).finally(() => { this.permissionPending = false; });
+    } catch (_) {
+      this.permissionPending = false;
+      this.calendarMgr = null;
+      this.showMessage('无法访问日历，请检查权限后重试');
+    }
     return false;
   }
 
-  calendar_permission_denied(error: BusinessError, index: number) {
-    this.context?.showAlertDialog({
-      title: $r('app.string.error_occurred'),
-      subtitle: `${error.message}`,
-      message: $r('app.string.need_calendar_permission'),
-      autoCancel: true,
-      alignment: DialogAlignment.Center,
-      gridCount: 4,
-      primaryButton: {
-        value: $r('app.string.cancel'),
-        action: () => {}
-      },
-      secondaryButton: {
-        enabled: true,
-        defaultFocus: true,
-        style: DialogButtonStyle.HIGHLIGHT,
-        value: $r('app.string.goto_system_settings'),
-        action: () => {
-          this.atManager.requestPermissionOnSetting(this.context?.getHostContext(), ['ohos.permission.READ_CALENDAR', 'ohos.permission.WRITE_CALENDAR'])
-            .then((data: Array<abilityAccessCtrl.GrantStatus>) => {
-              if (data[0] + data[1] === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
-                this.calendarMgr = calendarManager.getCalendarManager(this.context?.getHostContext());
-                this.executeCorresponding(index)
-              } else {
-                this.showMessage($r('app.string.denied_calendar_permission'));
-              }
-            }).catch((err: BusinessError) => {
-            console.error(`requestPermissionOnSetting fail, code: ${err.code}, message: ${err.message}`);
-          });
-        }
-      },
-      cancel: () => {},
-      onWillDismiss: (dismissDialogAction: DismissDialogAction) => {
-        if (dismissDialogAction.reason === DismissReason.PRESS_BACK) {
-          dismissDialogAction.dismiss();
-        }
-        if (dismissDialogAction.reason === DismissReason.TOUCH_OUTSIDE) {
-          dismissDialogAction.dismiss();
-        }
-      }
-    });
+  executeCorresponding(index: number): void {
+    if (index === 1) this.deleteCalendar();
+    if (index === 2) this.setClassCalendar();
+    if (index === 3) this.setExamCalendar();
   }
 
-  executeCorresponding(index: number) {
-    switch (index) {
-      case 1:
-        this.deleteCalendar();
-        break;
-      case 2:
-        this.setClassCalendar();
-        break;
-      case 3:
-        this.setExamCalendar();
-        break;
+  async deleteCalendar(): Promise<void> {
+    try {
+      if (!this.calendarMgr) throw new Error('请先授予日历权限');
+      await this.writer.clear(this.calendarMgr, [this.calendarAccount, this.calendarAccount_exam]);
+      this.showMessage('本应用课程和考试日历已清除');
+    } catch (_) {
+      this.showMessage('日历未全部清除，请检查权限并等待当前操作完成后重试');
     }
   }
 
-  deleteCalendar() { // index 1
-    this.calendarMgr?.getCalendar(this.calendarAccount).then((data: calendarManager.Calendar) => {
-      // console.log('requestPermissionsFrom success',JSON.stringify(data))
-      let calendar: calendarManager.Calendar | undefined = data;
-      if (calendar !== undefined) {
-        // == undefined 时无妮可之记创建的日程
-        this.calendarMgr?.deleteCalendar(calendar).catch((error: BusinessError) => {
-          this.showMessage($r('app.string.denied_calendar_permission'));
-        });
-        calendar = undefined;
-      }
-    }).catch((err: BusinessError) => {
-      // console.log('requestPermissionsFrom success',JSON.stringify(err))
-      if (err.message == 'GetCalendar failed!') {
-        // this.showMessage($r('app.string.clear_success'));
+  async saveEvents(isExam: boolean, minute: number): Promise<void> {
+    try {
+      if (!this.calendarMgr) throw new Error('请先授予日历权限');
+      let events: calendarManager.Event[] = [];
+      if (isExam) {
+        examManager.readStoredExam();
+        events = examEvents(examManager.allExamInfo, minute);
       } else {
-        this.showMessage($r('app.string.denied_calendar_permission'));
+        if (!campusReady()) throw new Error('请先核对西安校区的校历与课时');
+        ScheduleManager.init();
+        const semester = ScheduleManager.semesters[ScheduleManager.defaultSemester];
+        events = courseEvents(ScheduleStorage.getCourses(semester.createTime), semester, classTimes, minute);
+      }
+      // Validate the entire input before touching existing reminders.
+      await this.writer.replace(this.calendarMgr, isExam ? this.calendarAccount_exam : this.calendarAccount,
+        events, isExam ? '#FFCECB' : '#BCC7DF', minute >= 0);
+      if (isExam) ScheduleSources.setExamRemindBefore(minute);
+      else ScheduleSources.setRemindBefore(minute);
+      this.showMessage(events.length === 0 ? '没有日程，本应用对应日历已清除' :
+        `已写入 ${events.length} 条日程${minute < 0 ? '（不提醒）' : '；请在系统日历核对提醒'}`);
+    } catch (error) {
+      this.showMessage((error as Error).message || '日历更新失败，请检查权限后重试');
+    }
+  }
+
+  setClassCalendar(): void {
+    if (!campusReady()) { this.showMessage('请先核对西安校区的校历与课时，当前不能生成课程提醒'); return; }
+    const minutes: number[] = [-1, 10, 20, 30, 45, 60, 90, 120];
+    this.context?.showTextPickerDialog({
+      selected: Math.max(0, minutes.indexOf(ScheduleSources.remindBefore[0])),
+      range: ['不提醒', '10 分钟', '20 分钟', '30 分钟', '45 分钟', '1 小时', '1.5 小时', '2 小时'],
+      defaultPickerItemHeight: 36, canLoop: false,
+      onAccept: (value: TextPickerResult) => {
+        const minute = minutes[Number(value.index)];
+        if (minute !== undefined) this.saveEvents(false, minute);
       }
     });
-    setTimeout(() => {
-      this.calendarMgr?.getCalendar(this.calendarAccount_exam).then((data: calendarManager.Calendar) => {
-        let calendar: calendarManager.Calendar | undefined = data;
-        if (calendar != undefined) {
-          this.calendarMgr?.deleteCalendar(calendar).catch((error: BusinessError) => {
-            this.showMessage($r('app.string.denied_calendar_permission'));
-          });
-          calendar = undefined;
-        }
-      }).catch((err: BusinessError) => {
-        if (err.message == 'GetCalendar failed!') {
-          // this.showMessage($r('app.string.clear_success'));
-        } else {
-          this.showMessage($r('app.string.denied_calendar_permission'));
-        }
-      });
-    }, 500);
-    this.showMessage($r('app.string.clear_success'));
   }
 
-  setClassCalendar() { // index 2
-    if (!campusReady()) {
-      this.showMessage('请先核对西安校区的校历与课时，当前不能生成课程提醒');
-      return;
-    }
-    let selected3: number = 0;
-    switch (ScheduleSources.remindBefore[0]) {
-      case 10: selected3 = 1; break;
-      case 20: selected3 = 2; break;
-      case 30: selected3 = 3; break;
-      case 45: selected3 = 4; break;
-      case 60: selected3 = 5; break;
-      case 90: selected3 = 6; break;
-      case 120: selected3 = 7; break;
-    }
-    // 在上课几分钟前提醒
+  setExamCalendar(): void {
+    const minutes: number[] = [-1, 30, 60, 120, 1440, 2880, 10080];
     this.context?.showTextPickerDialog({
-      selected: selected3,
-      range: ['不提醒', '上课前 10 分钟', '上课前 20 分钟', "上课前 30 分钟",
-        "上课前 45 分钟", "上课前 1 小时", "上课前 90 分钟", "上课前 2 小时"],
-      defaultPickerItemHeight: 36,
-      canLoop: false,
+      selected: Math.max(0, minutes.indexOf(ScheduleSources.examRemindBefore[0])),
+      range: ['不提醒', '考试前 30 分钟', '考试前 1 小时', '考试前 2 小时', '考试前 1 天', '考试前 2 天', '考试前 1 周'],
+      defaultPickerItemHeight: 36, canLoop: false,
       onAccept: (value: TextPickerResult) => {
-        // 删除日程
-        this.calendarMgr?.getCalendar(this.calendarAccount).then((data: calendarManager.Calendar) => {
-          let calendar: calendarManager.Calendar | undefined = data;
-          if (calendar != undefined) {
-            this.calendarMgr?.deleteCalendar(calendar).catch((error: BusinessError) => {
-              this.showMessage($r('app.string.denied_calendar_permission'));
-            });
-            calendar = undefined;
-          }
-        }).catch((err: BusinessError) => {
-          if (err.message == 'GetCalendar error!') {
-            this.showMessage($r('app.string.denied_calendar_permission'));
-          }
-        });
-
-        //创建日程
-        setTimeout(() => {
-          this.calendarMgr?.createCalendar(this.calendarAccount).then((data: calendarManager.Calendar) => {
-            let calendar: calendarManager.Calendar | undefined = data;
-            // 确保日历账户创建成功后，再进行后续相关操作
-            // 将课程写入日历
-            if (calendar != undefined) {
-              //获取日历账户
-              this.calendarMgr?.getCalendar(this.calendarAccount, (err, data) => {
-                if (err) {
-                  this.showMessage($r('app.string.denied_calendar_permission'));
-                } else {
-                  const config: calendarManager.CalendarConfig = {
-                    enableReminder: true, // 打开日程提醒
-                    color: '#BCC7DF' // 设置日历账户颜色
-                  };
-                  data.setConfig(config).then(() => { // 设置日历配置信息
-                    let valueData: number[] = [-1, 10, 20, 30, 45, 60, 90, 120]
-                    ScheduleSources.setRemindBefore(valueData[Number(value.index)]);
-                    if (value.index == 0) {
-                      this.showMessage('已更改为 不提醒');
-                    } else {
-                      this.showMessage(`已更改为 在${value.value}提醒`);
-                    }
-                    // let eventId: number | undefined = undefined;
-                    const allClasses: ScheduleSources.classAttribute[] = ScheduleStorage.getCourses(ScheduleManager.semesters[ScheduleManager.defaultSemester].createTime);
-                    const termStart: number = ScheduleManager.semesters[ScheduleManager.defaultSemester].beginTime;
-                      for (let singleClass of allClasses) { // 叠课判断
-                        // 确保数组有序
-                        singleClass.weekOfTerm.sort((a, b) => a - b);
-                        singleClass.timeSpan.sort((a, b) => a - b);
-                        // 非上课周排除
-                        let excludeDates: number[] = [];
-                        for (let i = 1; i < singleClass.weekOfTerm.length; i++) {
-                          for (let j = singleClass.weekOfTerm[i - 1] + 1; j < singleClass.weekOfTerm[i]; j++) {
-                            excludeDates.push(tools.getClassTimestamp(termStart, j, singleClass.dayOfWeek, ScheduleSources.commonClassStamp[singleClass.timeSpan[0]][0]));
-                          }
-                        }
-                        // 设置日程
-                        const event: calendarManager.Event = {
-                          title: singleClass.name, // 日程标题
-                          location: { location: singleClass.location },
-                          type: calendarManager.EventType.NORMAL, // 日程类型
-                          startTime: tools.getClassTimestamp(termStart, singleClass.weekOfTerm[0], singleClass.dayOfWeek, ScheduleSources.commonClassStamp[singleClass.timeSpan[0]][0]), // 日程开始时间
-                          endTime: tools.getClassTimestamp(termStart, singleClass.weekOfTerm[0], singleClass.dayOfWeek, ScheduleSources.commonClassStamp[singleClass.timeSpan[singleClass.timeSpan.length - 1]][1]), // 日程结束时间
-                          reminderTime: ScheduleSources.remindBefore, // 距开始时间提前remindBefore分钟提醒
-                          recurrenceRule: {
-                            // 日程重复规则
-                            recurrenceFrequency: calendarManager.RecurrenceFrequency.WEEKLY, // 日程重复规则类型
-                            count: singleClass.weekOfTerm.length + excludeDates.length, // 日程重复次数，该字段和expire属性只需要填写一个，如果两个都填写按照count属性计算。
-                            interval: 1, // 重复日程间隔时间，以recurrenceFrequency为单位
-                            // expire: date.getTime() + 60 * 60 * 1000 * 3, 日程过期时间，该字段和count属性只需要填写一个，如果两个都填写按照count属性计算。
-                            excludedDates: excludeDates // 日程排除日期，将该日期从重复日程中排除掉
-                          }
-                        };
-                        if (calendar != undefined) {
-                          calendar.addEvent(event)
-                            // .then((data: number) => {
-                            // eventId = data;
-                            // });
-                        }
-                      }
-                  }).catch((err: BusinessError) => {
-                    this.showMessage($r('app.string.denied_calendar_permission'));
-                  });
-                }
-              });
-            }
-          }).catch((error: BusinessError) => {
-            this.showMessage($r('app.string.denied_calendar_permission'));
-          });
-        }, 500);
+        const minute = minutes[Number(value.index)];
+        if (minute !== undefined) this.saveEvents(true, minute);
       }
-    })
-  }
-
-  setExamCalendar() { // index 3
-    let selected4: number = 0;
-    switch (ScheduleSources.examRemindBefore[0]) {
-      case 30: selected4 = 1; break;
-      case 60: selected4 = 2; break;
-      case 120: selected4 = 3; break;
-      case 1440: selected4 = 4; break;
-      case 2880: selected4 = 5; break;
-      case 10080: selected4 = 6; break;
-    }
-    // 在上课几分钟前提醒
-    this.context?.showTextPickerDialog({
-      selected: selected4,
-      range: ['不提醒', "考试前 30 分钟", "考试前 1 小时", "考试前 2 小时", "考试前 1 天",
-        "考试前 2 天", "考试前 1 周"],
-      defaultPickerItemHeight: 36,
-      canLoop: false,
-      onAccept: (value: TextPickerResult) => {
-        // 删除原日程
-        let getPermission: boolean = true;
-        this.calendarMgr?.getCalendar(this.calendarAccount_exam).then((data: calendarManager.Calendar) => {
-          let calendar: calendarManager.Calendar | undefined = data;
-          if (calendar != undefined) {
-            this.calendarMgr?.deleteCalendar(calendar).catch((error: BusinessError) => {
-              getPermission = false;
-              this.showMessage($r('app.string.denied_calendar_permission'));
-            });
-            calendar = undefined;
-          }
-        }).catch((err: BusinessError) => {
-          if (err.message == 'GetCalendar error!') {
-            getPermission = false;
-            this.showMessage($r('app.string.denied_calendar_permission'));
-          }
-        });
-
-        // 创建日程
-        setTimeout(() => {
-          if (getPermission)
-            this.calendarMgr?.createCalendar(this.calendarAccount_exam).then((data: calendarManager.Calendar) => {
-              let calendar: calendarManager.Calendar | undefined = data;
-              // 确保日历账户创建成功后，再进行后续相关操作
-              // 将课程写入日历
-              if (calendar != undefined) {
-                //获取日历账户
-                this.calendarMgr?.getCalendar(this.calendarAccount_exam, (err, data) => {
-                  if (err) {
-                    this.showMessage($r('app.string.denied_calendar_permission'));
-                  } else {
-                    const config: calendarManager.CalendarConfig = {
-                      enableReminder: true, // 打开日程提醒
-                      color: '#FFCECB' // 设置日历账户颜色
-                    };
-                    data.setConfig(config).then(() => { // 设置日历配置信息
-                      const valueData: number[] = [-1, 30, 60, 120, 1440, 2880, 10080];
-                      ScheduleSources.setExamRemindBefore(valueData[Number(value.index)]);
-                      if (value.index == 0) {
-                        this.showMessage('已更改为 不提醒');
-                      } else {
-                        this.showMessage(`已更改为 在${value.value}提醒`);
-                      }
-                      let eventId: number | undefined = undefined;
-                      for (let layer1 of examManager.allExamInfo) {
-                        // 设置日程
-                        const event: calendarManager.Event = {
-                          title: layer1.name, // 日程标题
-                          location: { location: layer1.building + layer1.classroom },
-                          type: calendarManager.EventType.NORMAL, // 日程类型
-                          startTime: new Date(layer1.date.slice(0, 16)).getTime(), // 日程开始时间
-                          endTime: new Date(layer1.date.slice(0, 11) +
-                          layer1.date.slice(17, 22)).getTime(), // 日程结束时间
-                          reminderTime: ScheduleSources.examRemindBefore, // 距开始时间提前remindBefore分钟提醒
-                        };
-                        if (calendar != undefined) {
-                          calendar.addEvent(event).then((data: number) => {
-                            eventId = data;
-                          });
-                        }
-                      }
-                    }).catch((err: BusinessError) => {
-                      this.showMessage($r('app.string.denied_calendar_permission'));
-                    });
-                  }
-                });
-              }
-            }).catch((error: BusinessError) => {
-              this.showMessage($r('app.string.denied_calendar_permission'));
-            });
-        }, 500);
-      }
-    })
+    });
   }
 }
-
 export default new WriteCalendar();

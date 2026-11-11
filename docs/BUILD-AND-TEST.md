@@ -1,20 +1,24 @@
 # 构建、签名、设备验证和维护
 
-## 当前环境证据
+## 当前环境证据（2026-11-12）
 
-配置聊天“设置 DailyNic_HMOS”记录了在其运行实例安装工具链并构建**原版**未签名 HAP：SDK 26.0.1 Beta1，编译 SDK 26.0.1.120，target API 6.1.0(23)，minimum API 5.1.0(18)。该记录不是本次修改版构建结果。
+本次已加载真正具备工具链的环境，在独立 `/workspace/DailyNic_SUST` 工作目录取得用户分支；原 `/workspace/DailyNic_HMOS` 保留在 `3b7852b`，原配置、密钥和 HAP 未覆盖。
 
-当前适配聊天挂载的是较早环境快照，实查没有 `/workspace/.cloud-tools/dailynic`、HarmonyOS SDK、Hvigor、OHPM、HDC、依赖目录或 `build-profile.json5`。`bash build.sh` 以退出码 2 停在找不到 Hvigor；**本次修改版未编译、未生成 HAP**。保存/发布环境配置与当前聊天实际挂载的快照不同，不能把另一个实例的产物当作本分支产物。需要后续把本分支交给已经就绪的环境，或在本机 DevEco Studio 构建。
+实查 SDK `26.0.1.120 Beta1`、命令行工具 `26.0.1.290`、Hvigor `6.26.21`、OHPM `26.0.1.220`、Java 21。主机测试使用现有 Node `24.22.1`，Hvigor 由激活脚本选择 Node `24.14.1`。从现有目录复制同版本依赖到独立目录，未安装软件、升级依赖或修改锁文件。
 
-本聊天可操作的是云端 Linux，不是用户个人电脑。提供 `scripts/check-local-environment.ps1` 供 Windows 本机只读检查；尚未在个人电脑执行。脚本不安装软件、不更改系统设置、不连接手机。IDE 内工具不一定在 PATH，仍须核对 DevEco Studio 的 SDK Manager/版本信息。
+本修改版已通过 ArkTS 编译、资源编译、PackageHap 和 PackingCheck。target 与 minimum 均为 `6.1.0(23)`：原界面直接使用 API 23，故取消不实的 API 18 最低兼容声明；不把 Beta 编译 SDK 26 当成手机兼容性结论。没有个人签名。官方 `hap-sign-tool verify-app` 返回 `signature not found` / `No Hap Signing Block before ZIP Central Directory`。HDC 实查返回 `[Empty]`，未安装到手机。
+
+此前“缺少工具链、本分支未编译”的记录是上一实例的历史状态，现已解除；产物大小、校验和和源码对应关系见 [交付记录](DELIVERY.md)。
+
+主机测试覆盖逻辑、存储/API 桩、文件 URI 处理及卡片绑定数据，不覆盖 ArkUI 渲染、手机文件选择器、日历权限和系统投递。默认沙箱禁止跨时区测试的 `spawnSync`；在获准的外层环境运行原测试后通过，未删除或跳过测试。
 
 ## 构建本分支
 
 1. 在已配置的环境或本机取出 `codex/sust-xian-foundation` 分支；先运行 `git status --short`，保留已有改动。
 2. 使用现有的激活脚本，或设置 `HVIGORW`、`DEVECO_SDK_HOME`、现有 Java/Node 路径。不要复用原 Windows `C:/Program Files/...` 的硬编码路径。已保存的云端激活脚本会被 `build.sh` 检测并加载。
-3. 如果 `build-profile.json5` 不存在，将根目录 `.bak` 复制为它。模板的 signingConfigs 为空，产品不引用不存在的 signingConfig，适合未签名构建。保留 target API 23，不因为 Beta 编译器提高 target；原 minimum API 18 与部分 API 23 调用存在兼容性声明风险，未证明支持低版本手机。
+3. 如果 `build-profile.json5` 不存在，将根目录 `.bak` 复制为它。模板的 signingConfigs 为空，产品不引用不存在的 signingConfig，适合未签名构建。保持 target/minimum API 23，不因为 Beta 编译器提高 target。新建配置使用已修正模板；已有签名配置由本人核对 minimum，不覆盖证书或其他内容。
 4. 本版本不再导入 `Encryption.ets`；无需生成或复制上游 RSA 私钥。已部署环境中的旧开发测试密钥文件保持本地、被 Git 忽略，不用于本版本账号登录。后续清理可在确认无旧数据需求后由用户处理。
-5. 若依赖尚缺，先说明将安装哪些开发依赖，再用已安装 OHPM 执行 `ohpm install --all --no-save`，检查清单和锁文件差异，不升级依赖来掩盖错误。本次未执行软件安装或改变系统设置。
+5. 若依赖尚缺，先说明将安装哪些开发依赖，再用已安装 OHPM 执行 `ohpm install --all --no-save`，检查清单和锁文件差异，不升级依赖来掩盖错误。本次仅复用已有依赖，未执行软件安装或改变系统设置。
 6. 执行 `bash build.sh`。脚本用 `--no-daemon --no-parallel`，不会停止用户已有 daemon。成功后由 `scripts/inspect_hap.py` 核对包身份、ZIP 完整性、SDK 字段和 SHA-256。它不验证签名或手机运行。IDE 已生成签名包时可向检查脚本显式传入该文件路径。
 7. 使用 Node 24 执行 `node --test tests/*.test.mjs`；不依赖 npm install。Node 的类型语法剥离只用于主机测试，不能替代 ArkTS 编译和 Hypium/真机测试。
 
@@ -45,7 +49,7 @@
 | 官方网页 | 系统浏览器正确跳转，用户自行登录；应用没有凭据弹窗、桥接或自动提交 |
 | 视觉 | 手机横竖屏、浅深色、背景、字体缩放、分栏符合预期 |
 
-日历的原实现使用异步创建/删除及延迟任务，设备级并发、拒绝授权和系统提醒可靠性必须实测，主机日期测试不覆盖这些行为。桌面卡片频率受系统策略影响，不能承诺精确每分钟更新。
+日历已改为串行等待删除、创建、配置和批量写入；操作互斥，失败清理部分新日程，失败不会提示成功。每次操作重新检查权限，仅匹配本 fork 账户；先校验数据再删除旧日历。课程按实际教学周生成独立日程，修改课表/作息后须重新生成。更新失败时旧提醒可能已清除，界面明确要求重试。以上通过主机桩验证，设备权限、系统日历语义和锁屏投递仍必须真机验证。桌面卡片频率受系统策略影响，不能承诺精确每分钟更新。
 
 ## 后续维护
 

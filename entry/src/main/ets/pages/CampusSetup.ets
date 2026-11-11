@@ -33,7 +33,8 @@ export struct CampusSetup {
       // Only initialize an empty default semester. Existing semester dates are edited individually.
       const index = ScheduleManager.defaultSemester;
       if (ScheduleStorage.getCourses(ScheduleManager.semesters[index].createTime).length === 0) {
-        ScheduleManager.changeSemesterStartTime(index, firstMonday);
+        const error = ScheduleManager.changeSemesterStartTime(index, firstMonday);
+        if (error !== undefined) throw new Error('作息已保存，但学期日期保存失败，请在学期管理中重试');
       }
       this.message = `已保存 ${periodCount()} 节个人核对作息。已有学期起始日期未改动，请在学期管理中逐一核对。`;
     } catch (error) {

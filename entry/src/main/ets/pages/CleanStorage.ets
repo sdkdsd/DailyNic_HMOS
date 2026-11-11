@@ -271,8 +271,9 @@ struct ComponentLabel {
   @Prop category: string = '';
   build() {
     Row({ space: 4 }) {
-      Circle()
-        .fill(this.cmpColor)
+      Row()
+        .backgroundColor(this.cmpColor)
+        .borderRadius(6)
         .height(12)
         .width(12)
       Text(`${this.category} ${formatBytes(this.cmpSize, 2, false)}`)

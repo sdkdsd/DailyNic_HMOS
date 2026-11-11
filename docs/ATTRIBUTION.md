@@ -2,7 +2,7 @@
 
 此修改版本基于 Your-USTC/DailyNic_HMOS，检查基线为 `3b7852b48de0ee6081d4afa75f87d3b42aa2b25a`，从用户的 `sdkdsd/DailyNic_HMOS` checkout 开发。修改日期：2026-11-12。原项目、作者、上游提交历史未修改。
 
-- 原版权：DailyNic Copyright © 2026 YourUSTC Developer Team。原许可证正文保持在根目录 `LICENSE`；其中项目声明允许 GPLv3 或后续版本。本 fork 延续 GPL-3.0-or-later，不提供担保。对外提供二进制时应同时提供对应修改版源代码及构建说明；本次没有发布二进制。
+- 原版权：DailyNic Copyright © 2026 YourUSTC Developer Team。原许可证正文保持在根目录 `LICENSE`；其中项目声明允许 GPLv3 或后续版本。本 fork 延续 GPL-3.0-or-later，不提供担保。对外提供二进制时应同时提供对应修改版源代码及构建说明；本次提供个人测试用未签名 HAP，对应源码提交和构建信息见 `DELIVERY.md`。
 - 原应用作者列表和署名资源保留；“关于”页明确展示原团队、原作者资源及本 fork 身份。上游 README、原使用条款分别存档于 `docs/README.upstream.md` 和 `docs/TermsOfUse.upstream.html`，仓库历史保留全部原实现。
 - `entry/src/modules/ImagePreview/LICENSE` 为 Apache License 2.0，未修改此模块许可证和作者声明。
 - 原 `utils/jsencrypt` 保留其许可证和源码，但凭据保存、RSA 解密及网页密码桥接不再被本应用导入。无需把开发密钥嵌入新版本。

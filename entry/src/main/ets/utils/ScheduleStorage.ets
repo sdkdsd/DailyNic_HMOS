@@ -46,15 +46,37 @@ function loadSchedule(): storedSchedule {
   return scheduleCache;
 }
 
-function flushSchedule(): void {
+function copySchedule(): storedSchedule {
+  return JSON.parse(JSON.stringify(loadSchedule())) as storedSchedule;
+}
+
+function flushSchedule(data: storedSchedule): void {
+  const temporaryPath = scheduleFilePath + '.tmp';
+  const file = fileIo.openSync(temporaryPath, fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
   try {
-    const file = fileIo.openSync(scheduleFilePath, fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
-    fileIo.writeSync(file.fd, JSON.stringify(scheduleCache ?? { defaultSemester: 0, semesters: [] }));
+    fileIo.writeSync(file.fd, JSON.stringify(data));
+    fileIo.fsyncSync(file.fd);
+  } finally {
     fileIo.closeSync(file);
-    fileReady = true;
-  } catch (e) {
-    console.error('ScheduleStorage: failed to save schedule file:', JSON.stringify(e));
   }
+  fileIo.renameSync(temporaryPath, scheduleFilePath);
+  scheduleCache = data;
+  fileReady = true;
+}
+
+// Validated backups append in one write, never a half-imported set of semesters.
+export function appendBackup(semesters: exportSemester[]): number {
+  const data = copySchedule();
+  const firstIndex = data.semesters.length;
+  let id = Date.now();
+  for (const existing of data.semesters) id = Math.max(id, existing.attribute.createTime);
+  const incoming = JSON.parse(JSON.stringify(semesters)) as exportSemester[];
+  for (const semester of incoming) {
+    semester.attribute.createTime = ++id;
+    data.semesters.push(semester);
+  }
+  flushSchedule(data);
+  return firstIndex;
 }
 
 export function getDefaultSemester(): number {
@@ -62,19 +84,18 @@ export function getDefaultSemester(): number {
 }
 
 export function setDefaultSemester(index: number): void {
-  const data = loadSchedule();
+  const data = copySchedule();
   if (data.defaultSemester === index) return; // 值未变，不写盘
   data.defaultSemester = index;
-  scheduleCache = data;
-  flushSchedule();
+  flushSchedule(data);
 }
 
 export function getSemesters(): semesterAttribute[] {
-  return loadSchedule().semesters.map(entry => entry.attribute);
+  return copySchedule().semesters.map(entry => entry.attribute);
 }
 
 export function setSemesters(attributes: semesterAttribute[]): void {
-  const data = loadSchedule();
+  const data = copySchedule();
   data.semesters = attributes.map(attribute => {
     const existing = data.semesters.find(entry => entry.attribute.createTime === attribute.createTime);
     const entry: exportSemester = {
@@ -83,41 +104,37 @@ export function setSemesters(attributes: semesterAttribute[]): void {
     };
     return entry;
   });
-  scheduleCache = data;
-  flushSchedule();
+  flushSchedule(data);
 }
 
 export function getCourses(createTime: number): classAttribute[] {
-  const data = loadSchedule();
+  const data = copySchedule();
   const entry = data.semesters.find(item => item.attribute.createTime === createTime);
   return entry ? entry.courses : [];
 }
 
 export function setCourses(createTime: number, courses: classAttribute[]): void {
-  const data = loadSchedule();
+  const data = copySchedule();
   const entry = data.semesters.find(item => item.attribute.createTime === createTime);
   if (entry) {
     entry.courses = courses;
   } else {
     data.semesters.push({ attribute: { name: '', source: '', createTime: createTime, beginTime: 0, totalWeekNum: 0 }, courses: courses });
   }
-  scheduleCache = data;
-  flushSchedule();
+  flushSchedule(data);
 }
 
 export function deleteSemesterData(createTime: number): void {
-  const data = loadSchedule();
+  const data = copySchedule();
   data.semesters = data.semesters.filter(item => item.attribute.createTime !== createTime);
-  scheduleCache = data;
-  flushSchedule();
+  flushSchedule(data);
 }
 
 /**
  * 清除全部课表数据（用于故障恢复页面）。
  */
 export function clearScheduleData(): void {
-  scheduleCache = { defaultSemester: 0, semesters: [] };
-  flushSchedule();
+  flushSchedule({ defaultSemester: 0, semesters: [] });
 }
 
 /**
@@ -127,7 +144,7 @@ export function clearScheduleData(): void {
  * @param coursesByCreateTime 旧版各学期课程数据（键为 createTime）
  */
 export function importLegacyData(defaultSemester: number, attributes: semesterAttribute[], coursesByCreateTime: Record<string, classAttribute[]>): void {
-  const data = loadSchedule();
+  const data = copySchedule();
   data.semesters = attributes.map(attribute => {
     const entry: exportSemester = {
       attribute: attribute,
@@ -138,8 +155,7 @@ export function importLegacyData(defaultSemester: number, attributes: semesterAt
   if (attributes.length > 0) {
     data.defaultSemester = defaultSemester >= 0 && defaultSemester < attributes.length ? defaultSemester : 0;
   }
-  scheduleCache = data;
   if (data.semesters.length > 0) {
-    flushSchedule();
+    flushSchedule(data);
   }
 }

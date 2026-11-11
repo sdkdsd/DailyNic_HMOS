@@ -18,7 +18,7 @@ import { TodoCardItem } from '../todo_info/viewmodel/TodoCardItem';
 const TAG: string = 'EntryFormAbility';
 const DOMAIN_NUMBER: number = 0xFF00;
 
-class FormDataClass {
+export class FormDataClass {
   campusConfigured: boolean = campusReady();
   periodTimes: string[][] = classTimes.map((pair: string[]) => pair.slice());
   todayCourse: ScheduleSources.classAttribute[] = [];
@@ -29,8 +29,8 @@ class FormDataClass {
   todoList: TodoCardItem[] = [];
   lastRefresh: string = '';
   currentTime: number = 0;
-  constructor(refreshType: number) {
-    const currentTime = new Date();
+  constructor(refreshType: number, timestamp: number = Date.now()) {
+    const currentTime = new Date(timestamp);
     this.currentTime = currentTime.getTime();
     if (refreshType === 0) { // 0 → 刷新课表
       ScheduleManager.init();
@@ -55,6 +55,13 @@ class FormDataClass {
         this.tomorrowCourse = ScheduleManager.getDefaultClassByDay(currentWeek + (chinaWeekday(this.currentTime) === 0 ? 1 : 0), (chinaWeekday(this.currentTime) + 1) % 7)
           .sort((a, b) => a.timeSpan[0] - b.timeSpan[0]);
       }
+
+      const tomorrowTime = this.currentTime + 86400000;
+      const tomorrowWeek = teachingWeek(tomorrowTime, termStartTime);
+      this.tomorrowCourse = campusReady() && tomorrowWeek >= 1 &&
+        tomorrowWeek <= ScheduleManager.semesters[ScheduleManager.defaultSemester].totalWeekNum ?
+        ScheduleManager.getDefaultClassByDay(tomorrowWeek, chinaWeekday(tomorrowTime))
+          .sort((a, b) => a.timeSpan[0] - b.timeSpan[0]) : [];
 
       //this.cardListParameter.itemCount = this.todayCourse.length;
       this.count = this.todayCourse.length;
@@ -167,7 +174,11 @@ export default class EntryFormAbility extends FormExtensionAbility {
     ScheduleStorage.init(this.context, true);
     ExamStorage.init(this.context, true);
     TodoStorage.init(this.context, true);
-    const eventSource: string = JSON.parse(message).msgTest;
+    let eventSource: string = '';
+    try {
+      eventSource = (JSON.parse(message) as FormEvent).msgTest;
+    } catch (_) { return; }
+    if (!['schedule', 'todo', 'exam'].includes(eventSource)) return;
     const refreshType: number = eventSource === 'schedule' ? 0 : (eventSource === 'todo' ? 2 : 1);
     let formData = new FormDataClass(refreshType);
 
@@ -193,3 +204,5 @@ export default class EntryFormAbility extends FormExtensionAbility {
     return formInfo.FormState.READY;
   }
 }
+
+interface FormEvent { msgTest: string; }

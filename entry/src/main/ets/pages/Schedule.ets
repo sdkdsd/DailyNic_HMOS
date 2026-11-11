@@ -410,11 +410,8 @@ struct Schedule {
                 const rawImportedData = JSON.parse(result) as exportedData;
                 const checkResult = ScheduleSources.validateExportedData(rawImportedData);
                 if (checkResult === '') {
-                  const oldNum: number = ScheduleManager.semesters.length;
-                  let currentTime = Date.now();
-                  rawImportedData.semesters.forEach(importSemester => {
-                    ScheduleManager.newSemester(importSemester.attribute.name, importSemester.attribute.source, importSemester.attribute.beginTime, ++currentTime, importSemester.attribute.totalWeekNum, importSemester.courses);
-                  })
+                  const oldNum = ScheduleStorage.appendBackup(rawImportedData.semesters);
+                  ScheduleManager.init();
                   if (rawImportedData.semesters.length > 0) {
                     ScheduleManager.switchTempSemester(oldNum + rawImportedData.defaultSemester);
                     this.initSchedule();
@@ -430,6 +427,8 @@ struct Schedule {
                 this.getUIContext().getPromptAction().showToast({ message: $r('app.string.read_file_format_error') });
               }
             }
+          }).catch(() => {
+            this.getUIContext().getPromptAction().showToast({ message: '备份读取失败，请重新选择有效的 JSON 文件（最大 5 MiB）' });
           });
         });
 
@@ -1205,6 +1204,7 @@ struct Schedule {
       this.initSchedule(); // 在onShown中刷新显示
     })
     .onShown(() => {
+      this.initSchedule();
       this.refreshGrid();
       setTimeout(() => this.showXiuHint = UnifiedPreferences.getBoolSync('ShowPinchHint', true), 0);
     });
@@ -1730,12 +1730,13 @@ struct Schedule {
                 })
                 .width('100%')
                 .selectAll(true);
-              Circle()
-                .fill(this.isColorLegal ? this.classColor : '#0000')
+              Row()
+                .backgroundColor(this.isColorLegal ? this.classColor : '#0000')
                 .width(32)
                 .height(32)
+                .borderRadius(16)
                 .offset({ x: -4 })
-                .stroke(this.isColorLegal ? $r('app.color.grid_border') : $r('app.color.red'))
+                .border({ width: 1, color: this.isColorLegal ? $r('app.color.grid_border') : $r('app.color.red') })
                 .bindPopup(this.showColorHint, {
                   builder: this.colorHintPopup(),
                   placement: Placement.Left,

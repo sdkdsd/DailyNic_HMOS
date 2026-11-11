@@ -96,33 +96,35 @@ struct Index {
   @State webBackPress: boolean = UnifiedPreferences.getBoolSync('webBackPress', true);
   @State currentTime: Date = new Date();
   private autoRefreshTimer: number = -1;
+  private refreshStartTimer: number = -1;
 
   onPageShow(): void { // 切后台回来时也执行，即使不在当前页面
-    console.log('test!!!')
     this.refreshInfo(); // 立即刷新，然后计划刷新
     this.refreshTodo(); // 待办独立刷新，不随每分钟自动刷新
     this.scheduleAutoRefresh();
   }
 
-  onPageHide(): void {
-    console.log('test!!!')
-    if (this.autoRefreshTimer !== -1) {
-      clearInterval(this.autoRefreshTimer);
-    }
+  private stopAutoRefresh(): void {
+    if (this.refreshStartTimer !== -1) clearTimeout(this.refreshStartTimer);
+    if (this.autoRefreshTimer !== -1) clearInterval(this.autoRefreshTimer);
+    this.refreshStartTimer = this.autoRefreshTimer = -1;
+  }
+
+  onPageHide(): void { this.stopAutoRefresh(); }
+
+  aboutToDisappear(): void {
+    this.stopAutoRefresh();
+    hostContext().eventHub.off('navigation');
   }
 
   private scheduleAutoRefresh(): void {
-    // 计算到下一个整分钟（0秒）的延迟
-    console.log('test!!!')
+    this.stopAutoRefresh();
     const now = new Date();
     const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
-    setTimeout(() => {
-      console.log('test!!!')
+    this.refreshStartTimer = setTimeout(() => {
+      this.refreshStartTimer = -1;
       this.refreshInfo();
-      // 之后每60秒刷新一次
-      this.autoRefreshTimer = setInterval(() => {
-        this.refreshInfo();
-      }, 60000);
+      this.autoRefreshTimer = setInterval((): void => { this.refreshInfo(); }, 60000);
     }, delay);
   }
 
@@ -331,6 +333,12 @@ struct Index {
       else
         this.termState = 1;
     }
+
+    const tomorrowTime = this.currentTime.getTime() + 86400000;
+    const tomorrowWeek = teachingWeek(tomorrowTime, termStartTime);
+    this.tomorrowCourse = campusReady() && tomorrowWeek >= 1 &&
+      tomorrowWeek <= ScheduleManager.semesters[ScheduleManager.defaultSemester].totalWeekNum ?
+      ScheduleManager.getDefaultClassByDay(tomorrowWeek, chinaWeekday(tomorrowTime), true) : [];
 
     examManager.readStoredExam();
     this.exams = examManager.allExamInfo.filter(item => this.currentTime.getTime() <= item.endTimeStamp);
@@ -1289,6 +1297,12 @@ struct Index {
       .hideTitleBar(true)
       .hideToolBar(true)
       .mode(this.adaptSplit)
+      .onNavBarStateChange((visible: boolean) => {
+        if (visible) {
+          this.refreshInfo();
+          this.refreshTodo();
+        }
+      })
       .onNavigationModeChange((mode: NavigationMode) => {
         this.isSplit = mode;
       })

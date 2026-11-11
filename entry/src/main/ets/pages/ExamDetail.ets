@@ -1,3 +1,4 @@
+import { CHINA_OFFSET_MS } from '../utils/CampusTime';
 
 import * as tools from '../utils/tools'
 import examManager, { areExamAttributesEqual } from '../utils/ExamManager';
@@ -35,6 +36,18 @@ struct ExamDetail {
   @State endHour: number = 0;
   @State endMinute: number = 0;
 
+  saveExam(copy: boolean = false): void {
+    this.newExamInfo.date = `${this.date} ${this.startHour.toString().padStart(2, '0')}:${this.startMinute.toString().padStart(2, '0')}~${this.endHour.toString().padStart(2, '0')}:${this.endMinute.toString().padStart(2, '0')}`;
+    try {
+      if (this.isChangeSchedule && !copy) examManager.replaceExam(this.oriExamInfo, this.newExamInfo);
+      else examManager.addExam(this.newExamInfo);
+      this.examInfo = examManager.allExamInfo;
+      this.showSheet = false;
+    } catch (error) {
+      this.context.getPromptAction().showToast({ message: (error as Error).message || '考试未保存，请重试' });
+    }
+  }
+
   @Builder examDetailDialog() {
     Column() {
       Row({ space: 5 }) {
@@ -57,9 +70,13 @@ struct ExamDetail {
               builder: MessageDialog({
                 message: $r('app.string.delete_exam_or_not'),
                 onConfirm: () => {
-                  examManager.deleteExam(this.oriExamInfo);
-                  this.examInfo = examManager.allExamInfo;
-                  this.showSheet = false;
+                  try {
+                    examManager.deleteExam(this.oriExamInfo);
+                    this.examInfo = examManager.allExamInfo;
+                    this.showSheet = false;
+                  } catch (_) {
+                    this.context.getPromptAction().showToast({ message: '删除未保存，请重试' });
+                  }
                 }
               }),
               autoCancel: true,
@@ -77,18 +94,7 @@ struct ExamDetail {
           .height(42)
           .width(42)
           .onClick(() => {
-            if (this.startHour * 60 + this.startMinute > this.endHour * 60 + this.endMinute){
-              let temp: number = this.startHour;
-              this.startHour = this.endHour;
-              this.endHour = temp;
-              temp = this.startMinute;
-              this.startMinute = this.endMinute;
-              this.endMinute = temp;
-            }
-            this.newExamInfo.date = `${this.date} ${this.startHour.toString().padStart(2, '0')}:${this.startMinute.toString().padStart(2, '0')}~${this.endHour.toString().padStart(2, '0')}:${this.endMinute.toString().padStart(2, '0')}`;
-            examManager.addExam(this.newExamInfo);
-            this.examInfo = examManager.allExamInfo;
-            this.showSheet = false;
+            this.saveExam(true);
           });
         }
 
@@ -135,26 +141,7 @@ struct ExamDetail {
         .width(42)
         .height(42)
         .onClick(() => {
-          if (this.startHour * 60 + this.startMinute > this.endHour * 60 + this.endMinute){
-            let temp: number = this.startHour;
-            this.startHour = this.endHour;
-            this.endHour = temp;
-            temp = this.startMinute;
-            this.startMinute = this.endMinute;
-            this.endMinute = temp;
-          }
-          this.newExamInfo.date = `${this.date} ${this.startHour.toString().padStart(2, '0')}:${this.startMinute.toString().padStart(2, '0')}~${this.endHour.toString().padStart(2, '0')}:${this.endMinute.toString().padStart(2, '0')}`;
-          if (this.isChangeSchedule) {
-            if (!areExamAttributesEqual(this.newExamInfo, this.oriExamInfo)) {
-              examManager.deleteExam(this.oriExamInfo);
-              examManager.addExam(this.newExamInfo);
-              this.examInfo = examManager.allExamInfo;
-            }
-          } else {
-            examManager.addExam(this.newExamInfo);
-            this.examInfo = examManager.allExamInfo;
-          }
-          this.showSheet = false;
+          this.saveExam();
         });
       }
       .margin({ bottom: 10 })
@@ -182,7 +169,7 @@ struct ExamDetail {
         .margin({ bottom: 5 });
 
         Row() {
-          Text($r('app.string.date_colon'))
+          Text('日期（北京时间）：')
             .layoutWeight(1)
           Text(`\udb80\udfda ${this.date}`)
             .fontSize(14)
@@ -341,7 +328,7 @@ struct ExamDetail {
           type: '',
           name: '',
           importance: 5,
-          date: `${this.currentTime.getFullYear()}-${(this.currentTime.getMonth() + 1).toString().padStart(2, '0')}-${this.currentTime.getDate().toString().padStart(2, '0')} ${this.currentTime.getHours().toString().padStart(2, '0')}:${this.currentTime.getMinutes().toString().padStart(2, '0')}~${(this.currentTime.getHours() + 2).toString().padStart(2, '0')}:${this.currentTime.getMinutes().toString().padStart(2, '0')}`,
+          date: new Date(this.currentTime.getTime() + CHINA_OFFSET_MS).toISOString().slice(0, 10) + ' 09:00~11:00',
           classroom: '',
           building: '',
           campus: '',
@@ -354,7 +341,7 @@ struct ExamDetail {
           type: '',
           name: '',
           importance: 5,
-          date: `${this.currentTime.getFullYear()}-${(this.currentTime.getMonth() + 1).toString().padStart(2, '0')}-${this.currentTime.getDate().toString().padStart(2, '0')} ${this.currentTime.getHours().toString().padStart(2, '0')}:${this.currentTime.getMinutes().toString().padStart(2, '0')}~${(this.currentTime.getHours() + 2).toString().padStart(2, '0')}:${this.currentTime.getMinutes().toString().padStart(2, '0')}`,
+          date: new Date(this.currentTime.getTime() + CHINA_OFFSET_MS).toISOString().slice(0, 10) + ' 09:00~11:00',
           classroom: '',
           building: '',
           campus: '',
@@ -364,10 +351,10 @@ struct ExamDetail {
         };
         this.isChangeSchedule = false;
         this.date = this.newExamInfo.date.slice(0, 10);
-        this.startHour = this.currentTime.getHours();
-        this.startMinute = this.currentTime.getMinutes();
-        this.endHour = this.currentTime.getHours() + 2;
-        this.endMinute = this.currentTime.getMinutes();
+        this.startHour = 9;
+        this.startMinute = 0;
+        this.endHour = 11;
+        this.endMinute = 0;
         this.showSheet = true;
       }
     },

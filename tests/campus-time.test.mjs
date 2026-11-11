@@ -59,3 +59,9 @@ test('China academic calculations are independent of host/device timezone', () =
     execFileSync(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, TZ }, encoding: 'utf8' }));
   assert.equal(new Set(results).size, 1);
 });
+
+test('exam wall-clock dates reject overflow, equal times and cross-day ranges', async () => {
+  const { examTimestamps } = await import('../entry/src/main/ets/utils/CampusTime.ts');
+  assert.deepEqual(examTimestamps('2026-11-12 08:10~10:00'), [Date.parse('2026-11-12T08:10:00+08:00'), Date.parse('2026-11-12T10:00:00+08:00')]);
+  for (const date of ['2026-02-30 08:00~09:00','2026-11-12 24:00~26:00','2026-11-12 08:00~08:00','2026-11-12 23:00~01:00','']) assert.throws(()=>examTimestamps(date));
+});

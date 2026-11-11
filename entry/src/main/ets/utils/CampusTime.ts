@@ -31,6 +31,22 @@ export function parseMonday(text: string): number {
   return stamp;
 }
 
+// Manual exam dates are wall-clock times in Xi'an, independent of device timezone.
+export function examTimestamps(text: string): number[] {
+  if (!/^\d{4}-\d{2}-\d{2} [0-2]\d:[0-5]\d~[0-2]\d:[0-5]\d$/.test(text)) {
+    throw new Error('考试时间须为 YYYY-MM-DD HH:mm~HH:mm（北京时间）');
+  }
+  const date = text.slice(0, 10);
+  const midnight = Date.parse(date + 'T00:00:00+08:00');
+  if (!Number.isFinite(midnight) || new Date(midnight + CHINA_OFFSET_MS).toISOString().slice(0, 10) !== date) {
+    throw new Error('考试日期无效');
+  }
+  const start = midnight + clockStamp(text.slice(11, 16));
+  const end = midnight + clockStamp(text.slice(17, 22));
+  if (end <= start) throw new Error('考试结束时间须晚于开始时间，暂不支持跨日考试');
+  return [start, end];
+}
+
 export function teachingWeek(timestamp: number, firstMonday: number): number {
   return Math.floor((chinaDayStart(timestamp) - firstMonday) / WEEK_MS) + 1;
 }

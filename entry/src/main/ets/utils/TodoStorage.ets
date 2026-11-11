@@ -107,7 +107,12 @@ export function importImage(srcPath: string): string {
   }
   try {
     const dest = `${todoImageDir}/todo_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-    fileIo.copyFileSync(srcPath, dest);
+    const source = fileIo.openSync(srcPath, fileIo.OpenMode.READ_ONLY);
+    try {
+      fileIo.copyFileSync(source.fd, dest);
+    } finally {
+      fileIo.closeSync(source);
+    }
     return dest;
   } catch (e) {
     console.error('TodoStorage: failed to import image:', JSON.stringify(e));
@@ -117,7 +122,7 @@ export function importImage(srcPath: string): string {
 
 /** 删除私有目录中的附图文件；路径为空或文件不存在时静默忽略 */
 export function deleteImage(path: string): void {
-  if (path === '') {
+  if (!todoImageDir || !path.startsWith(todoImageDir + '/') || path.includes('/../')) {
     return;
   }
   try {
@@ -149,69 +154,54 @@ function loadTodo(): TodoItem[] {
   return todoCache;
 }
 
-function flushTodo(): void {
+function flushTodo(data: TodoItem[]): void {
+  const temporaryPath = todoFilePath + '.tmp';
+  const file = fileIo.openSync(temporaryPath, fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
   try {
-    const file = fileIo.openSync(todoFilePath, fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
-    fileIo.writeSync(file.fd, JSON.stringify(todoCache ?? []));
+    fileIo.writeSync(file.fd, JSON.stringify(data));
+    fileIo.fsyncSync(file.fd);
+  } finally {
     fileIo.closeSync(file);
-  } catch (e) {
-    console.error('TodoStorage: failed to save todo file:', JSON.stringify(e));
   }
+  fileIo.renameSync(temporaryPath, todoFilePath);
+  todoCache = data;
 }
 
 export function getItems(): TodoItem[] {
-  return loadTodo();
+  return JSON.parse(JSON.stringify(loadTodo())) as TodoItem[];
 }
 
-export function setItems(data: TodoItem[]): void {
-  todoCache = data;
-  flushTodo();
-}
+export function setItems(data: TodoItem[]): void { flushTodo(data); }
 
-/** 在数组末尾追加一条待办/作业 */
 export function addItem(item: TodoItem): void {
-  loadTodo().push(item);
-  flushTodo();
+  const data = getItems();
+  data.push(item);
+  flushTodo(data);
 }
 
-/** 按数组下标更新一条待办/作业；下标越界时静默忽略。清理不再引用的旧附图文件 */
 export function updateItem(index: number, item: TodoItem): void {
-  const data = loadTodo();
-  if (index < 0 || index >= data.length) {
-    return;
-  }
-  const old = data[index];
-  if (old.imagePaths !== undefined) {
-    const kept = item.imagePaths ?? [];
-    old.imagePaths.forEach((path: string): void => {
-      if (!kept.includes(path)) {
-        deleteImage(path);
-      }
-    });
-  }
+  const data = getItems();
+  if (index < 0 || index >= data.length) throw new Error('待办不存在，请刷新后重试');
+  const oldImages = data[index].imagePaths ?? [];
   data[index] = item;
-  flushTodo();
-}
-
-/** 按数组下标删除一条待办/作业；下标越界时静默忽略。删除后其余条目下标前移，同时清理其附图 */
-export function removeItem(index: number): void {
-  const data = loadTodo();
-  if (index < 0 || index >= data.length) {
-    return;
+  flushTodo(data);
+  // Remove images only after successful persistence, and keep shared copies.
+  for (const path of oldImages) {
+    if (!data.some((entry: TodoItem) => (entry.imagePaths ?? []).includes(path))) deleteImage(path);
   }
-  const removed = data[index];
-  removed.imagePaths?.forEach((path: string): void => deleteImage(path));
-  data.splice(index, 1);
-  flushTodo();
 }
 
-/**
- * 清除全部待办数据（用于故障恢复页面）。
- */
-export function clearTodoData(): void {
-  todoCache = [];
-  flushTodo();
+export function removeItem(index: number): void {
+  const data = getItems();
+  if (index < 0 || index >= data.length) throw new Error('待办不存在，请刷新后重试');
+  const removed = data.splice(index, 1)[0];
+  flushTodo(data);
+  for (const path of removed.imagePaths ?? []) {
+    if (!data.some((entry: TodoItem) => (entry.imagePaths ?? []).includes(path))) deleteImage(path);
+  }
 }
+
+export function clearTodoData(): void { flushTodo([]); }
 
 /**
  * 按条件过滤条目，结果携带原始数组下标，便于随后调用 updateItem / removeItem。

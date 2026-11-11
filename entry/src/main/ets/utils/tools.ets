@@ -1,6 +1,7 @@
+import { readBackupUri, writeBackupUri } from './DocumentBackup';
 import { classTimestamp } from './CampusTime';
 import { common } from "@kit.AbilityKit";
-import { fileIo, fileUri, picker } from "@kit.CoreFileKit";
+import { picker } from "@kit.CoreFileKit";
 import { BusinessError } from "@kit.BasicServicesKit";
 
 /**
@@ -301,44 +302,29 @@ export function truncateString(str: string = '', maxLen: number): string {
   return str;
 }
 
-export function saveStringToFile(context: UIContext, fileName: string, suffixChoices: string, saveData: string) {
+export async function saveStringToFile(context: UIContext, fileName: string, suffixChoices: string, saveData: string): Promise<void> {
   try {
-    const documentSaveOptions = new picker.DocumentSaveOptions();
-    documentSaveOptions.newFileNames = [fileName];
-    documentSaveOptions.defaultFilePathUri = "file://docs/storage/Users/currentUser/";
-    documentSaveOptions.fileSuffixChoices = [suffixChoices];
-    const documentViewPicker = new picker.DocumentViewPicker(context.getHostContext() as common.UIAbilityContext);
-    documentViewPicker.save(documentSaveOptions).then((documentSaveResult: string[]) => {
-      if (documentSaveResult.length > 0) {
-        let uri: string = documentSaveResult[0];
-        let file = fileIo.openSync(uri, fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.TRUNC);
-        /*let writeLen: number = */
-        fileIo.writeSync(file.fd, saveData);
-        fileIo.closeSync(file);
-        context.getPromptAction().showToast({ message: $r('app.string.save_file_success', decodeURI(uri.slice(38))), duration: 5000 });
-      } else {
-        context.getPromptAction().showToast({ message: $r('app.string.save_file_cancel') });
-      }
-    });
-  } catch(err) {
-    context.getPromptAction().showToast({ message: $r('app.string.save_file_cancel') });
+    const options = new picker.DocumentSaveOptions();
+    options.newFileNames = [fileName];
+    options.fileSuffixChoices = [suffixChoices];
+    const documentPicker = new picker.DocumentViewPicker(context.getHostContext() as common.UIAbilityContext);
+    const uris = await documentPicker.save(options);
+    if (!uris.length) {
+      context.getPromptAction().showToast({ message: $r('app.string.save_file_cancel') });
+      return;
+    }
+    writeBackupUri(uris[0], saveData);
+    context.getPromptAction().showToast({ message: '课表备份已完整写入所选位置', duration: 5000 });
+  } catch (_) {
+    context.getPromptAction().showToast({ message: '备份导出失败，请重新选择可写位置并重试' });
   }
 }
 
 export async function readStringFromFile(context: UIContext, suffixChoices: string): Promise<string> {
-  try {
-    const documentSelectOptions = new picker.DocumentSelectOptions();
-    documentSelectOptions.maxSelectNumber = 1;
-    documentSelectOptions.fileSuffixFilters = [suffixChoices];
-    const documentViewPicker = new picker.DocumentViewPicker(context.getHostContext() as common.UIAbilityContext);
-    const documentSelectResult: string[] = await documentViewPicker.select(documentSelectOptions);
-    if (documentSelectResult.length > 0) {
-      const result = fileIo.readTextSync(new fileUri.FileUri(documentSelectResult[0]).path);
-      return result;
-    } else {
-      return 'null';
-    }
-  } catch(err) {
-    return 'null';
-  }
+  const options = new picker.DocumentSelectOptions();
+  options.maxSelectNumber = 1;
+  options.fileSuffixFilters = [suffixChoices];
+  const documentPicker = new picker.DocumentViewPicker(context.getHostContext() as common.UIAbilityContext);
+  const uris = await documentPicker.select(options);
+  return uris.length ? readBackupUri(uris[0]) : 'null';
 }
