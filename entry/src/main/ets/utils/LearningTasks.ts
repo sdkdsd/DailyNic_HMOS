@@ -28,7 +28,7 @@ export function learningDeadline(text: string, capturedAt: number): number {
   const days = Number(/(\d+)天/.exec(cleaned)?.[1] ?? 0);
   const hours = Number(/(\d+)小时/.exec(cleaned)?.[1] ?? 0);
   const minutes = Number(/(\d+)分钟/.exec(cleaned)?.[1] ?? 0);
-  if (days > 730 || hours > 23 || minutes > 59) throw new Error('deadline');
+  if (days * 24 + hours > 730 * 24 || minutes > 59) throw new Error('deadline');
   return capturedAt + ((days * 24 + hours) * 60 + minutes) * 60000;
 }
 function activeStatus(kind: string, status: string): boolean {

@@ -1,7 +1,7 @@
 import { fileIo } from '@kit.CoreFileKit';
 import type { LearningSnapshot, LearningPage, LearningTask } from './LearningTasks';
 import { emptyLearningSnapshot, validateLearningSnapshot,
-  mergeLearningPage, pendingLearningTasks } from './LearningTasks';
+  mergeLearningPage, pendingLearningTasks, learningTime } from './LearningTasks';
 
 let dataPath: string = '';
 export function initLearningStorage(context: Context): void { dataPath = `${context.filesDir}/learningTasks.json`; }
@@ -16,8 +16,9 @@ export interface LearningView { tasks: LearningTask[]; summary: string; }
 export function getLearningView(): LearningView {
   try {
     const s = getLearningSnapshot();
-    return { tasks: pendingLearningTasks(s), summary: s.homeworkAt || s.examAt ?
-      '显示最近读取的状态；进入学习通可联网更新。' : '尚未同步学习通作业和考试' };
+    const tasks = pendingLearningTasks(s);
+    return { tasks, summary: s.homeworkAt || s.examAt ?
+      `作业：${s.homeworkAt ? learningTime(s.homeworkAt) : '尚未读取'}\n考试：${s.examAt ? learningTime(s.examAt) : '尚未读取'}\n${tasks.length ? '以下为最近读取状态' : '最近读取记录中暂无待办'}，可联网更新。` : '尚未同步学习通作业和考试' };
   } catch (_) { return { tasks: [], summary: '学习通缓存无法读取，原文件保留；请反馈此提示。' }; }
 }
 export interface LearningPreview { baseline: string; snapshot: LearningSnapshot; capturedAt: number; count: number; }

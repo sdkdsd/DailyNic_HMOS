@@ -13,6 +13,8 @@ test('learning deadlines preserve Beijing time, zero remaining and unknown due d
   assert.equal(logic.learningTime(now), '2026-11-12 12:00');
   assert.equal(logic.learningDeadline('1天2小时3分钟', now), now + 93780000);
   assert.equal(logic.learningDeadline('0分钟', now), now);
+  assert.equal(logic.learningDeadline('剩余82小时1分钟', now), now + 82 * 3600000 + 60000);
+  assert.equal(logic.learningDeadline('剩余1594小时1分钟', now), now + 1594 * 3600000 + 60000);
   assert.equal(logic.learningDeadline('', now), 0);
   for (const value of ['下周五', '-1天', '1小时2小时', '731天', '60分钟'])
     assert.throws(() => logic.learningDeadline(value, now));

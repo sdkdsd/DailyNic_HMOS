@@ -44,7 +44,16 @@ struct LearningPageView {
       this.rows = this.pending.snapshot.tasks.filter((t: LearningTask) => t.observedAt === capturedAt && t.kind === page.kind);
       this.count = this.pending.count;
       this.previewOpen = true;
-    } catch (_) { this.pending = null; this.status = `${failure} 已有数据未改动。`; }
+    } catch (error) {
+      this.pending = null;
+      const code = (error as Error).message;
+      if (code === 'deadline') failure = '列表的剩余时间格式尚未识别，请反馈此提示。';
+      else if (code === 'status') failure = '列表出现未识别的任务状态，请反馈此提示。';
+      else if (code === 'row') failure = '列表条目的名称或标识不完整，请反馈此提示。';
+      else if (code === 'duplicate') failure = '列表有重复标识，请刷新官方页面后重试。';
+      else if (code === 'cache' || code === 'storage') failure = '本地学习通缓存异常，请反馈此提示。';
+      this.status = `${failure} 已有数据未改动。`;
+    }
     finally { this.busy = false; }
   }
   @Builder Preview() {
