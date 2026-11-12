@@ -8,7 +8,7 @@ export interface LearningTask {
   active: boolean; dueAt: number; observedAt: number;
   deadlineState?: string;
 }
-export interface LearningSnapshot { version: number; tasks: LearningTask[]; homeworkAt: number; examAt: number; }
+export interface LearningSnapshot { version: number; tasks: LearningTask[]; homeworkAt: number; examAt: number; dismissedIds?: string[]; }
 
 export function learningNavigationAllowed(address: string): boolean {
   return /^https:\/\/(?:i|passport2|mooc1-api|mooc1|mooc2-ans|mooc1-2)\.chaoxing\.com(?::443)?(?:\/|$)/.test(address);
@@ -72,6 +72,10 @@ export function emptyLearningSnapshot(): LearningSnapshot { return { version: 1,
 export function validateLearningSnapshot(snapshot: LearningSnapshot): void {
   if (!snapshot || snapshot.version !== 1 || !Array.isArray(snapshot.tasks) || snapshot.tasks.length > 10000 ||
     !Number.isFinite(snapshot.homeworkAt) || snapshot.homeworkAt < 0 || !Number.isFinite(snapshot.examAt) || snapshot.examAt < 0) throw new Error('cache');
+  const dismissed = snapshot.dismissedIds;
+  if (dismissed !== undefined && (!Array.isArray(dismissed) || dismissed.length > 10000 ||
+    dismissed.some((id: string, index: number) => typeof id !== 'string' ||
+      !snapshot.tasks.some((t: LearningTask) => t && t.id === id) || dismissed.indexOf(id) !== index))) throw new Error('cache');
   const ids: string[] = [];
   for (const t of snapshot.tasks) {
     if (!t || !['homework', 'exam'].includes(t.kind) || typeof t.id !== 'string' ||
@@ -91,7 +95,7 @@ export function mergeLearningPage(previous: LearningSnapshot, page: LearningPage
   const tasks: LearningTask[] = previous.tasks.filter((old: LearningTask) => !incoming.some((t: LearningTask) => t.id === old.id));
   const result: LearningSnapshot = { version: 1, tasks: tasks.concat(incoming),
     homeworkAt: page.kind === 'homework' ? capturedAt : previous.homeworkAt,
-    examAt: page.kind === 'exam' ? capturedAt : previous.examAt };
+    examAt: page.kind === 'exam' ? capturedAt : previous.examAt, dismissedIds: previous.dismissedIds?.slice() };
   validateLearningSnapshot(result);
   return result;
 }
@@ -102,9 +106,22 @@ export function learningTaskDisposition(task: LearningTask, now: number): string
   return 'uncertain';
 }
 export function pendingLearningTasks(snapshot: LearningSnapshot, now: number = Date.now()): LearningTask[] {
-  return snapshot.tasks.filter((t: LearningTask) => learningTaskDisposition(t, now) === 'pending').sort((a: LearningTask, b: LearningTask) =>
+  return snapshot.tasks.filter((t: LearningTask) => !snapshot.dismissedIds?.includes(t.id) && learningTaskDisposition(t, now) === 'pending').sort((a: LearningTask, b: LearningTask) =>
     (a.dueAt || Number.MAX_SAFE_INTEGER) - (b.dueAt || Number.MAX_SAFE_INTEGER));
 }
 export function uncertainLearningTasks(snapshot: LearningSnapshot, now: number = Date.now()): LearningTask[] {
-  return snapshot.tasks.filter((t: LearningTask) => learningTaskDisposition(t, now) === 'uncertain');
+  return snapshot.tasks.filter((t: LearningTask) => !snapshot.dismissedIds?.includes(t.id) && learningTaskDisposition(t, now) === 'uncertain');
+}
+
+// Local user choice: match source + task ID, never titles or keywords.
+export function setLearningTaskDismissed(snapshot: LearningSnapshot, id: string, dismissed: boolean): LearningSnapshot {
+  validateLearningSnapshot(snapshot);
+  if (!snapshot.tasks.some((t: LearningTask) => t.id === id)) throw new Error('missing');
+  const ids = (snapshot.dismissedIds ?? []).filter((value: string) => value !== id);
+  if (dismissed) ids.push(id);
+  return { version: snapshot.version, tasks: snapshot.tasks.slice(), homeworkAt: snapshot.homeworkAt,
+    examAt: snapshot.examAt, dismissedIds: ids };
+}
+export function dismissedLearningTasks(snapshot: LearningSnapshot): LearningTask[] {
+  return snapshot.tasks.filter((t: LearningTask) => snapshot.dismissedIds?.includes(t.id));
 }

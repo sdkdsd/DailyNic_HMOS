@@ -153,3 +153,39 @@ test('ended, unknown and explicitly unlimited deadlines are not conflated', () =
   const reopened = logic.mergeLearningPage(s, page([row('601', '未交', '2小时')]), now + 1000);
   assert.ok(logic.pendingLearningTasks(reopened, now + 1000).some(t => t.id === 'homework:601'));
 });
+
+test('manual removal matches exact source ID, persists across refresh, and never blocks same-title new tasks', () => {
+  const original = logic.mergeLearningPage(logic.emptyLearningSnapshot(), page([row('701'), row('702','未交','')]), now);
+  let s = logic.setLearningTaskDismissed(original, 'homework:701', true);
+  s = logic.setLearningTaskDismissed(s, 'homework:702', true);
+  assert.equal(logic.pendingLearningTasks(s,now).length,0);
+  assert.equal(logic.uncertainLearningTasks(s,now).length,0);
+  assert.equal(logic.dismissedLearningTasks(s).length,2);
+  assert.equal(original.dismissedIds,undefined);
+  s = logic.mergeLearningPage(s,page([row('701'),row('702','未交',''),row('703')]),now+1000);
+  s = logic.mergeLearningPage(s,page([row('701','未交')],'exam'),now+1000);
+  assert.deepEqual(logic.pendingLearningTasks(s,now).map(t=>t.id),['homework:703','exam:701']);
+  s = logic.setLearningTaskDismissed(s,'homework:701',false);
+  assert.ok(logic.pendingLearningTasks(s,now).some(t=>t.id==='homework:701'));
+  assert.throws(()=>logic.setLearningTaskDismissed(s,'homework:999',true));
+  for(const dismissedIds of [['homework:999'],['homework:701','homework:701'],'bad'])
+    assert.throws(()=>logic.validateLearningSnapshot({...s,dismissedIds}));
+});
+
+test('manual remove/restore survives reload; failed writes and old previews cannot undo it', () => {
+  storage.initLearningStorage({filesDir:'/dismissal'});
+  storage.confirmLearningUpdate(storage.prepareLearningUpdate(page([row('801','未交','不限')]),now),now+1);
+  const preview=storage.prepareLearningUpdate(page([row('801')]),now+2);
+  const original=fs.files.get('/dismissal/learningTasks.json');
+  fs.setFailure(true);assert.throws(()=>storage.dismissLearningTask('homework:801',true));fs.setFailure(false);
+  assert.equal(fs.files.get('/dismissal/learningTasks.json'),original);
+  fs.setPartial(true);assert.throws(()=>storage.dismissLearningTask('homework:801',true));fs.setPartial(false);
+  assert.equal(fs.files.get('/dismissal/learningTasks.json'),original);
+  storage.dismissLearningTask('homework:801',true);
+  storage.initLearningStorage({filesDir:'/dismissal'});
+  assert.equal(storage.getLearningView().tasks.length,0);
+  assert.equal(storage.getLearningView().dismissed.length,1);
+  assert.throws(()=>storage.confirmLearningUpdate(preview,now+3),/stale/);
+  storage.dismissLearningTask('homework:801',false);
+  assert.equal(storage.getLearningView().tasks.length,1);
+});
