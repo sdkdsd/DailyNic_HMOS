@@ -34,8 +34,13 @@
     "system": "OpenHarmony-7.0.0.111",
     "api": 26
   },
-  "phone_installation": "NOT INSTALLED: user requested batched updates without repeated login. Device remains on sust.6.",
-  "phone_tests": [],
+  "phone_installation": "sust.7 HDC install -r and start succeeded after user clarified final update; no additional login requested.",
+  "phone_tests": [
+    "Signed sust.7 installed and started",
+    "Schedule and manual exam retained after upgrade/process replacement",
+    "Both learning sources retained: 2 homework and 5 exam pending items, 7 unique on home across scrolling",
+    "Home existing rows display latest saved observed time after upgrade"
+  ],
   "phone_not_tested": [
     "actual school schedule change",
     "natural session expiration",
@@ -46,9 +51,7 @@
     "complete exams/todos workflows",
     "coexistence with original app",
     "empty/paginated task lists",
-    "Exam cache cold start after saving: intentionally no second restart",
-    "sust.7 content-aware row rendering fix: built, not installed",
-    "sust.7 installation and all real-device behavior"
+    "Same-ID content change followed by online refresh and immediate row rerender: no additional login/read in sust.7"
   ],
   "download_url": null,
   "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
