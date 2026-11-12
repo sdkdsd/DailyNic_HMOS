@@ -5,8 +5,6 @@ import { LearningTask, learningTime, learningTaskDisposition } from '../utils/Le
 export struct LearningTaskList {
   @Prop tasks: LearningTask[] = [];
   @Prop uncertain: LearningTask[] = [];
-  @Prop dismissed: LearningTask[] = [];
-  @State showDismissed: boolean = false;
   onChanged: () => void = () => {};
   private setDismissed(task: LearningTask, dismissed: boolean): void {
     try { dismissLearningTask(task.id, dismissed); } catch (_) {
@@ -14,7 +12,7 @@ export struct LearningTaskList {
       return;
     }
     this.onChanged();
-    this.getUIContext().getPromptAction().showToast({ message: dismissed ? '已移除，可在已移除列表恢复' : '已恢复，按最新状态显示' });
+    this.getUIContext().getPromptAction().showToast({ message: dismissed ? '已移除，可在设置中恢复' : '已恢复，按最新状态显示' });
   }
   @Prop summary: string = '';
   @State showUncertain: boolean = false;
@@ -66,24 +64,6 @@ export struct LearningTaskList {
                   Text(`${task.status} · 期限不明`).fontSize(12)
                   Text(`读取于 ${learningTime(task.observedAt)}`).fontSize(11)
                   Button('移除待办').fontSize(12).onClick(() => this.setDismissed(task, true))
-                }.width('100%').alignItems(HorizontalAlign.Start)
-              }, (task: LearningTask) => JSON.stringify(task))
-            }.width('100%')
-          }.constraintSize({ maxHeight: 200 }).width('100%')
-        }
-      }
-      if (this.dismissed.length > 0) {
-        Button(`${this.showDismissed ? '收起' : '查看'}已移除（${this.dismissed.length}）`).fontSize(12)
-          .onClick(() => { this.showDismissed = !this.showDismissed; })
-        if (this.showDismissed) {
-          Text('仅移除本机的这条记录；同名新任务不受影响。恢复后按最新状态显示。').fontSize(12)
-          Scroll() {
-            Column({ space: 10 }) {
-              ForEach(this.dismissed, (task: LearningTask) => {
-                Column({ space: 3 }) {
-                  Text(`${task.kind === 'exam' ? '考试' : '作业'} · ${task.title}`).fontSize(14)
-                  if (task.course) { Text(task.course).fontSize(12) }
-                  Button('恢复到列表').fontSize(12).onClick(() => this.setDismissed(task, false))
                 }.width('100%').alignItems(HorizontalAlign.Start)
               }, (task: LearningTask) => JSON.stringify(task))
             }.width('100%')

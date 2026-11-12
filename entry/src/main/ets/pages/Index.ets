@@ -354,14 +354,12 @@ struct Index {
    */
   @State todoList: IndexedTodoItem[] = [];
   @State learningTasks: LearningTask[] = [];
-  @State dismissedLearningTasks: LearningTask[] = [];
   @State uncertainLearningTasks: LearningTask[] = [];
   @State learningSummary: string = '';
   refreshTodo(): void {
     const learning = getLearningView();
     this.learningTasks = learning.tasks;
     this.uncertainLearningTasks = learning.uncertain;
-    this.dismissedLearningTasks = learning.dismissed;
     this.learningSummary = learning.summary;
     const list = filterItems((item: TodoItem): boolean => !item.done && !item.submitted);
     list.sort((a: IndexedTodoItem, b: IndexedTodoItem): number =>
@@ -870,7 +868,7 @@ struct Index {
 
           if (this.showTodo) {
             Divider();
-            LearningTaskList({ tasks: this.learningTasks, uncertain: this.uncertainLearningTasks, dismissed: this.dismissedLearningTasks, onChanged: () => this.refreshTodo(), summary: this.learningSummary,
+            LearningTaskList({ tasks: this.learningTasks, uncertain: this.uncertainLearningTasks, onChanged: () => this.refreshTodo(), summary: this.learningSummary,
               onSync: () => { this.pageInfo.pushPath({ name: 'GetHomework' }); } })
             Divider();
             if (this.todoList.length === 0) {
@@ -1110,6 +1108,15 @@ struct Index {
       .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#0000')
       .backgroundBlurStyle(BackgroundImage.blurLevel)
       .borderRadius(20)
+
+      ListItem() {
+        Row() {
+          Text('已移除的学习通待办').fontSize(16).layoutWeight(1)
+          Text('›').fontSize(24)
+        }.padding(16).width('100%')
+      }.borderRadius(20)
+      .backgroundColor($r('app.color.grid_background'))
+      .onClick(() => this.pageInfo.pushPath({ name: 'LearningRemoved' }))
 
       ForEach(SettingsData.getSettingListData(), (item: ItemData[], _index: number) => {
         ListItemGroup() {
