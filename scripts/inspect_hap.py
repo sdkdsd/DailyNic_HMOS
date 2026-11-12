@@ -24,7 +24,7 @@ with zipfile.ZipFile(path) as archive:
     app = json.loads(archive.read('module.json'))['app']
     if app['bundleName'] != 'com.sdkdsd.dailynic.sust':
         raise SystemExit('Wrong bundle: this is not the SUST personal fork')
-    if app['versionName'] != '2.3.0-sust.6' or app['versionCode'] != 2003006:
+    if app['versionName'] != '2.3.0-sust.7' or app['versionCode'] != 2003007:
         raise SystemExit('Unexpected application version')
     for field in ('bundleName', 'versionName', 'versionCode', 'compileSdkVersion', 'targetAPIVersion', 'minAPIVersion', 'apiReleaseType'):
         print(f'{field}: {app.get(field, "not recorded")}')

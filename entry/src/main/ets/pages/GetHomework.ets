@@ -76,7 +76,7 @@ struct LearningPageView {
               Text(task.dueAt ? `约截止于 ${learningTime(task.dueAt)}（北京时间）` : '页面未提供截止时间').fontSize(13)
               Text(task.active ? '显示在待办' : '不再显示在待办').fontSize(12)
             }.width('100%').alignItems(HorizontalAlign.Start)
-          }, (task: LearningTask) => task.id)
+          }, (task: LearningTask) => JSON.stringify(task))
         }.width('100%')
       }.layoutWeight(1)
       Text('截止时间由页面剩余时间估算，请以官方页面为准。请始终同步同一账号。').fontSize(12)

@@ -22,7 +22,7 @@ export struct LearningTaskList {
                 Text(`${task.status} · ${task.dueAt ? '约截止于 ' + learningTime(task.dueAt) : '期限未知，请核对是否仍需完成'}`).fontSize(12)
                 Text(`读取于 ${learningTime(task.observedAt)} · 北京时间`).fontSize(11).fontColor($r('app.color.transparent_text'))
               }.width('100%').alignItems(HorizontalAlign.Start)
-            }, (task: LearningTask) => task.id)
+            }, (task: LearningTask) => JSON.stringify(task))
           }.width('100%')
         }.constraintSize({ maxHeight: 280 }).width('100%')
       }
