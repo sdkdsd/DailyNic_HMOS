@@ -72,6 +72,9 @@ export function appendBackup(semesters: exportSemester[]): number {
   for (const existing of data.semesters) id = Math.max(id, existing.attribute.createTime);
   const incoming = JSON.parse(JSON.stringify(semesters)) as exportSemester[];
   for (const semester of incoming) {
+    // A portable backup is a local copy, not authority to refresh an online semester.
+    semester.attribute.onlineTerm = undefined;
+    semester.onlineCourses = undefined;
     semester.attribute.createTime = ++id;
     data.semesters.push(semester);
   }
@@ -81,6 +84,31 @@ export function appendBackup(semesters: exportSemester[]): number {
 
 export function getDefaultSemester(): number {
   return loadSchedule().defaultSemester;
+}
+
+export function getOnlineSemester(term: string): exportSemester | null {
+  const matches = copySchedule().semesters.filter(entry => entry.attribute.onlineTerm === term);
+  if (matches.length > 1) throw new Error('存在多个在线学期，请核对');
+  return matches.length === 1 ? matches[0] : null;
+}
+
+// Abort if a local edit happened after preview. One atomic write includes the default.
+export function saveOnlineSemester(incoming: exportSemester, expected: string, makeDefault: boolean): number {
+  if (!incoming.attribute.onlineTerm || !incoming.onlineCourses) throw new Error('在线课表来源无效');
+  const data = copySchedule();
+  const matches = data.semesters.filter(entry => entry.attribute.onlineTerm === incoming.attribute.onlineTerm);
+  if (matches.length > 1 || JSON.stringify(matches.length === 1 ? matches[0] : null) !== expected) throw new Error('本地课表已改变，请重新预览');
+  const copy = JSON.parse(JSON.stringify(incoming)) as exportSemester;
+  let index = data.semesters.findIndex(entry => entry.attribute.onlineTerm === copy.attribute.onlineTerm);
+  if (index >= 0) { copy.attribute.createTime = data.semesters[index].attribute.createTime; data.semesters[index] = copy; }
+  else {
+    let id = Date.now();
+    for (const entry of data.semesters) id = Math.max(id, entry.attribute.createTime);
+    copy.attribute.createTime = id + 1; index = data.semesters.length; data.semesters.push(copy);
+  }
+  if (makeDefault) data.defaultSemester = index;
+  flushSchedule(data);
+  return index;
 }
 
 export function setDefaultSemester(index: number): void {
@@ -102,6 +130,7 @@ export function setSemesters(attributes: semesterAttribute[]): void {
       attribute: attribute,
       courses: existing ? existing.courses : []
     };
+    if (existing?.onlineCourses) entry.onlineCourses = existing.onlineCourses;
     return entry;
   });
   flushSchedule(data);

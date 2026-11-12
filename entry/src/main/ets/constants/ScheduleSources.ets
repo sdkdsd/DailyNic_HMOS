@@ -23,11 +23,13 @@ export interface semesterAttribute {
   beginTime: number, // 学期开始时间戳
   totalWeekNum: number, // 校历周数和课程最大周数中的较大值
   calendarWeekCount?: number // 明确应用的校历周数；旧版数据可缺省
+  onlineTerm?: string // Only dedicated online semesters are refreshed
 }
 
 export interface exportSemester {
   attribute: semesterAttribute,
   courses: classAttribute[]
+  onlineCourses?: classAttribute[] // Last school snapshot protects subsequent local edits
 };
 
 export interface exportedData {

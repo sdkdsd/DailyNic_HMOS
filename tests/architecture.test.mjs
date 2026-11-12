@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const ets = join(root, 'entry/src/main/ets');
 function walk(dir) { return readdirSync(dir, { withFileTypes:true }).flatMap(item => item.isDirectory() ? walk(join(dir,item.name)) : [join(dir,item.name)]); }
-const sources = walk(ets).filter(p=>/\.(ets|ts)$/.test(p) && !p.includes('/jsencrypt/') && !p.endsWith('/Encryption.ets'));
+const portablePath = p => p.replaceAll('\\', '/');
+const sources = walk(ets).filter(p=>/\.(ets|ts)$/.test(p) && !portablePath(p).includes('/jsencrypt/') && !portablePath(p).endsWith('/Encryption.ets'));
 test('no compiled first-party source imports credentials or registers a password bridge', () => {
   for (const path of sources) {
     const text = readFileSync(path,'utf8');
@@ -20,11 +21,11 @@ test('relative imports and explicitly named resources resolve', () => {
   const resourceNames = new Set();
   for (const dir of [resourceRoot,join(root,'AppScope/resources')]) {
     for (const path of walk(dir)) {
-      if (path.endsWith('.json') && path.includes('/element/')) {
+      if (path.endsWith('.json') && portablePath(path).includes('/element/')) {
         const content=JSON.parse(readFileSync(path,'utf8'));
         for(const [kind,values] of Object.entries(content)) for(const value of values) resourceNames.add(kind+'.'+value.name);
       }
-      if(path.includes('/media/')) resourceNames.add('media.'+path.split('/').pop().replace(/\.[^.]+$/,''));
+      if(portablePath(path).includes('/media/')) resourceNames.add('media.'+portablePath(path).split('/').pop().replace(/\.[^.]+$/,''));
     }
   }
   for (const path of sources) {

@@ -1,5 +1,23 @@
 # 构建、签名、设备验证和维护
 
+## 本机 Windows 最新续作（2026-11-12）
+
+已有 DevEco `E:\DevEco Studio`，SDK 26.0.0.105 Release、Hvigor 6.26.4、工具 Node 24.14.1、JBR 25.0.2。主机 Node 24.16.0。保留原工具、系统环境和签名；在 `work/DailyNic_HMOS` 新目录接手，无用户原有未提交修改。
+
+缺失根配置时才复制 build-profile.json5.bak，签名配置为空。现有 OHPM 缓存两项依赖校验与锁文件一致后，用已安装 `tools/node/node.exe tools/ohpm/bin/pm-cli.js install --all --no-save --retry_times 0 --fetch_timeout 15000` 复用缓存，未升级依赖/锁文件。
+
+为避免 wrapper 自动下载 pnpm，使用已有 Hvigor 主入口。首次可在项目忽略目录 node_modules/@ohos 下创建 junction：hvigor 指向 `<DevEco>/tools/hvigor/hvigor`，hvigor-ohos-plugin 指向 `<DevEco>/tools/hvigor/hvigor-ohos-plugin`；先核对现存路径，不能覆盖用户链接。build.ps1 只调整本次进程变量、使用项目 .hvigor/local-user-home，不安装工具。先前 wrapper 尝试下载 pnpm 被权限拒绝后已停止，不重试安装。
+
+```powershell
+./build.ps1 -DevEcoHome 'E:\DevEco Studio' -Clean
+node --test tests/*.test.mjs
+python -m unittest discover -s tests -p test_sust_import.py -v
+```
+
+48项 Node、12项 Python 已通过；ArkTS/完整 HAP 构建通过。最终产物 hash/源码和签名检查见 DELIVERY.md。旧云端工具链版本是历史，不代表本机版本。
+
+**手机验收新增首要项：** 正规个人签名后，在应用学校网页本人登录，分别读取学生/班级全部周，预览确认；重复获取同学期不增重复学期，网络失败和登录失效保留旧数据；退出重登、课程变化/停课、默认学期、首页与卡片刷新。当前 HDC `[Empty]`，以上全部未执行。文件选择器仍为备用验证项。
+
 ## 当前环境证据（2026-11-12）
 
 本次已加载真正具备工具链的环境，在独立 `/workspace/DailyNic_SUST` 工作目录取得用户分支；原 `/workspace/DailyNic_HMOS` 保留在 `3b7852b`，原配置、密钥和 HAP 未覆盖。

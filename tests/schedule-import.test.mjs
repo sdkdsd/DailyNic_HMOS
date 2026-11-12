@@ -9,6 +9,10 @@ const config = await loadLogic('utils/CampusConfig.ets', { '@kit.CoreFileKit': f
 const sources = await loadLogic('constants/ScheduleSources.ets', { '../utils/UnifyPreference': prefsURL, '../utils/CampusConfig': config.url, '../utils/CampusTime': timeURL });
 const c = config.module;
 const validate = sources.module.validateExportedData;
+const persistenceURL = asURL(`export const writes=[]; export let fail=false; export function setFail(v){fail=v;}
+export function appendBackup(data){if(fail)throw new Error('disk full');writes.push(structuredClone(data));return 2;}`);
+const persistence = await import(persistenceURL);
+const importer = (await loadLogic('utils/ScheduleImport.ets', { '../constants/ScheduleSources': sources.url, './ScheduleStorage': persistenceURL })).module;
 const fixture = () => ({
   exportTime: 1790000000, scheduleVersion: 'sust-xian-1', defaultSemester: 0,
   periods: [['08:10', '08:55'], ['09:05', '09:50']],
@@ -59,6 +63,24 @@ test('bad stored configuration does not silently fall back to another university
   assert.equal(c.periodCount(), 0);
   assert.deepEqual(sources.module.commonClassTime, [['--:--', '--:--']]);
   assert.throws(() => c.saveCampusProfile({ firstMonday: '2026-09-06', periodsText: '08:10-08:55', source: 'test' }));
+});
+
+test('file preview never writes; explicit confirmation revalidates settings before atomic append', () => {
+  c.saveCampusProfile({ firstMonday:'2026-09-07', periodsText:'08:10-08:55\n09:05-09:50', source:'Synthetic fixture' });
+  const pending = importer.previewScheduleImport(JSON.stringify(fixture()));
+  assert.equal(persistence.writes.length, 0); // Closing preview means no call to confirm.
+  assert.throws(() => importer.previewScheduleImport('{invalid'));
+  assert.equal(persistence.writes.length, 0);
+  c.saveCampusProfile({ firstMonday:'2026-09-07', periodsText:'08:15-08:55\n09:05-09:50', source:'Changed settings' });
+  assert.throws(() => importer.confirmScheduleImport(pending));
+  assert.equal(persistence.writes.length, 0);
+  c.saveCampusProfile({ firstMonday:'2026-09-07', periodsText:'08:10-08:55\n09:05-09:50', source:'Synthetic fixture' });
+  persistence.setFail(true);
+  assert.throws(() => importer.confirmScheduleImport(pending));
+  assert.equal(persistence.writes.length, 0);
+  persistence.setFail(false);
+  assert.equal(importer.confirmScheduleImport(pending),2);
+  assert.equal(persistence.writes.length,1);
 });
 
 test('seasonal profiles reload both tables; backups compare both seasons independent of export date', async () => {

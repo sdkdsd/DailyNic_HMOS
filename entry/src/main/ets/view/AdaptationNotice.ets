@@ -19,7 +19,7 @@ export struct AdaptationNotice {
           Button('设置西安校区课时').onClick(() => this.pathStack.pushPath({ name: 'CampusSetup' }))
           Button('本地课表').onClick(() => this.pathStack.pushPath({ name: 'Schedule' }))
           Button('本地考试').onClick(() => this.pathStack.pushPath({ name: 'ExamDetail' }))
-          Text('可手动录入；应用备份 JSON 可在本地课表菜单导入。学校网页或 Excel 不是应用备份，暂不支持直接导入。').fontSize(14)
+          Text('可手动录入；课表 JSON 可在本地课表菜单预览后确认导入。教务表格须先在电脑本地转换，不直接导入学校网页、PDF 或 Excel。').fontSize(14)
         }.padding(24).width('100%')
       }
     }

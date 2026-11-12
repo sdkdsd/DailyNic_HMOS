@@ -15,6 +15,7 @@ import RenameDialog from '../view/RenameDialog';
 import { JSON } from '@kit.ArkTS';
 import { currentScheduleVersion, FULL_TIME_FORMAT } from '../constants/BasicConstants';
 import MessageDialog from '../view/MessageDialog';
+import { previewScheduleImport, confirmScheduleImport } from '../utils/ScheduleImport';
 
 interface PopupOnStateChangeInfo {
   isVisible: boolean;
@@ -58,6 +59,68 @@ struct Schedule {
   private timeLineTimer: number = -1;
 
   msgDialogController?: CustomDialogController;
+  @State showImportPreview: boolean = false;
+  @State importPreview: exportSemester[] = [];
+  private pendingImport: exportedData | null = null;
+  private importBusy: boolean = false;
+
+  @Builder ImportPreview() {
+    Column({ space: 12 }) {
+      Text('核对后导入课表').fontSize(22).fontWeight(FontWeight.Bold)
+      Text('将追加为新学期。默认学期保持不变；班级补充请核对本人是否修读。确认前不会保存。').fontSize(14)
+      Scroll() {
+        Column({ space: 12 }) {
+          ForEach(this.importPreview, (semester: exportSemester) => {
+            Column({ space: 6 }) {
+              Text(semester.attribute.name).fontSize(18).fontWeight(FontWeight.Bold)
+              Text(`${semester.attribute.totalWeekNum} 周 · ${semester.courses.length} 条课程安排`).fontSize(14)
+              Text(semester.attribute.source).fontSize(12)
+              ForEach(semester.courses, (course: classAttribute) => {
+                Column({ space: 3 }) {
+                  Text(course.name).fontWeight(FontWeight.Bold)
+                  Text(`星期${'日一二三四五六'.charAt(course.dayOfWeek)} · 第${course.timeSpan.join('、')}节 · 第${course.weekOfTerm.join('、')}周`).fontSize(13)
+                  Text(`${course.location} ${course.teacher}`).fontSize(13)
+                }.alignItems(HorizontalAlign.Start).width('100%').padding(8)
+              })
+            }.alignItems(HorizontalAlign.Start).width('100%')
+          })
+        }.width('100%')
+      }.layoutWeight(1).width('100%')
+      Row({ space: 16 }) {
+        Button('取消').onClick(() => {
+          this.pendingImport = null;
+          this.showImportPreview = false;
+        })
+        Button('确认追加').onClick(() => {
+          if (this.importBusy || this.pendingImport === null) return;
+          this.importBusy = true;
+          const incoming = this.pendingImport;
+          let firstIndex: number;
+          try {
+            firstIndex = confirmScheduleImport(incoming);
+          } catch (error) {
+            this.importBusy = false;
+            this.getUIContext().getPromptAction().showToast({ message: '未保存，请核对作息、文件及存储后重试' });
+            return;
+          }
+          // Once persisted, discard the pending batch before any UI refresh can fail.
+          this.pendingImport = null;
+          this.showImportPreview = false;
+          try {
+            ScheduleManager.init();
+            ScheduleManager.switchTempSemester(firstIndex + incoming.defaultSemester);
+            this.initSchedule();
+            this.refreshGrid();
+            this.getUIContext().getPromptAction().showToast({ message: '已追加课表，可在学期管理中设为默认' });
+          } catch (error) {
+            this.getUIContext().getPromptAction().showToast({ message: '课表已保存，请重新打开页面；无需重复导入' });
+          } finally {
+            this.importBusy = false;
+          }
+        })
+      }
+    }.padding(20).height('100%').width('100%')
+  }
   @State showXiuHint: boolean = false;
   @Builder xiuHintPopup() {
     Row() {
@@ -384,9 +447,9 @@ struct Schedule {
             onPop: (popInfo: PopInfo) => {
               if (typeof popInfo.result === 'number' && popInfo.result < ScheduleManager.semesters.length) {
                 ScheduleManager.switchTempSemester(popInfo.result);
-                this.initSchedule();
-                this.refreshGrid();
               }
+              this.initSchedule();
+              this.refreshGrid();
             }
           });
         });
@@ -407,24 +470,12 @@ struct Schedule {
               this.getUIContext().getPromptAction().showToast({ message: $r('app.string.read_file_cancel') });
             } else {
               try {
-                const rawImportedData = JSON.parse(result) as exportedData;
-                const checkResult = ScheduleSources.validateExportedData(rawImportedData);
-                if (checkResult === '') {
-                  const oldNum = ScheduleStorage.appendBackup(rawImportedData.semesters);
-                  ScheduleManager.init();
-                  if (rawImportedData.semesters.length > 0) {
-                    ScheduleManager.switchTempSemester(oldNum + rawImportedData.defaultSemester);
-                    this.initSchedule();
-                    this.refreshGrid();
-                  }
-                  this.showSemesters = true;
-                  this.getUIContext().getPromptAction().showToast({ message: '导入成功' });
-                } else {
-                  this.getUIContext().getPromptAction().showToast({ message: checkResult });
-                }
+                this.pendingImport = previewScheduleImport(result);
+                this.importPreview = this.pendingImport.semesters;
+                this.showImportPreview = true;
               } catch(error) {
-                console.log('!!!' + JSON.stringify(error));
-                this.getUIContext().getPromptAction().showToast({ message: $r('app.string.read_file_format_error') });
+                this.pendingImport = null;
+                this.getUIContext().getPromptAction().showToast({ message: '文件无效或作息不匹配，请先核对个人配置' });
               }
             }
           }).catch(() => {
@@ -1342,7 +1393,12 @@ struct Schedule {
         }
         .width(40)
         .height(40)
-        .bindMenu(this.editMenu());
+        .bindMenu(this.editMenu())
+        .bindSheet($$this.showImportPreview, this.ImportPreview(), {
+          detents: [SheetSize.LARGE],
+          showClose: true,
+          onDisappear: () => { this.pendingImport = null; this.importPreview = []; }
+        });
       }
       .padding({ left: 12, right: 12, top: 3 })
       .width('100%')
