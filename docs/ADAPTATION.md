@@ -1,5 +1,7 @@
 # 适配结果与验证记录
 
+> 用户现已改由本地电脑对话接手，晚课明确暂缓。最新接续要求见 [LOCAL-HANDOFF.md](LOCAL-HANDOFF.md)；以下主机与手机验证边界保持不变。
+
 2026-11-12；仅修改用户 fork `sdkdsd/DailyNic_HMOS` 的 `codex/sust-xian-foundation`。接续远程提交 `82a3a6e0321070f3c7401caaabf7bff3da2e9fa1`，上游基线 `3b7852b48de0ee6081d4afa75f87d3b42aa2b25a`。未修改原作者仓库，未合并 PR，未登录学校账号，未安装手机应用。
 
 ## 逐项状态
