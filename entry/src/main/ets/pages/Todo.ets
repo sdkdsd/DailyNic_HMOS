@@ -1,4 +1,7 @@
 import BackgroundImage, { presetColor } from '../utils/BgImageManager';
+import { LearningTask } from '../utils/LearningTasks';
+import { getLearningView } from '../utils/LearningStorage';
+import { LearningTaskList } from '../view/LearningTaskList';
 import MessageDialog from '../view/MessageDialog';
 import {
   TodoItem, TodoType, SubmitChannel, IndexedTodoItem, getItems,
@@ -64,6 +67,8 @@ struct TodoPage {
 
   /** 当前列表（已过滤、已按有效时间升序），index 为原始数组下标 */
   @State todoList: IndexedTodoItem[] = [];
+  @State learningTasks: LearningTask[] = [];
+  @State learningSummary: string = '';
   /** 过滤类型：-1 全部，其余为 TodoType */
   @State filterType: number = -1;
   @State showSheet: boolean = false;
@@ -120,6 +125,9 @@ struct TodoPage {
   draftSnapshot: DraftSnapshot | null = null;
 
   refresh(): void {
+    const learning = getLearningView();
+    this.learningTasks = learning.tasks;
+    this.learningSummary = learning.summary;
     // SegmentButton 的颜色保存在 options 中，主题变化时需手动同步
     const accent = presetColor[BackgroundImage.themeColor].accentColor;
     this.draftTypeOptions.fontColor = accent;
@@ -1049,7 +1057,7 @@ struct TodoPage {
       }
     },
     {
-      value: '导入作业',
+      value: '学习通',
       icon: $r('app.media.cloud_download'),
       action: () => this.pathStack.pushPath({ name: 'GetHomework' })
     }
@@ -1058,6 +1066,8 @@ struct TodoPage {
   build() {
     NavDestination() {
       Column() {
+        LearningTaskList({ tasks: this.learningTasks, summary: this.learningSummary,
+          onSync: () => { this.pathStack.pushPath({ name: 'GetHomework' }); } })
         Column({ space: 8 }) {
           // 搜索框 + 筛选栏开关
           Row({ space: 8 }) {
@@ -1139,7 +1149,8 @@ struct TodoPage {
                 .interpolation(ImageInterpolation.Medium)
                 .draggable(false)
                 .margin({ bottom: 6 })
-              Text(this.hasFilterCondition() ? $r('app.string.no_search_result') : $r('app.string.no_todo_info2'))
+              Text(this.hasFilterCondition() ? $r('app.string.no_search_result') :
+                this.learningTasks.length > 0 ? '没有其他本地待办' : $r('app.string.no_todo_info2'))
                 .fontSize(18)
                 .textAlign(TextAlign.Center)
             }
@@ -1154,7 +1165,7 @@ struct TodoPage {
             })
             .borderRadius(12);
           }
-          .height('70%')
+          .layoutWeight(1)
           .justifyContent(FlexAlign.Center);
         } else {
           List({ space: 8 }) {

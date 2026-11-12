@@ -1,4 +1,5 @@
 import { initCampusProfile } from '../utils/CampusConfig';
+import { initLearningStorage } from '../utils/LearningStorage';
 
 import { AbilityConstant, Configuration, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -28,6 +29,7 @@ export default class EntryAbility extends UIAbility {
     ScheduleStorage.init(this.context);
     ExamStorage.init(this.context);
     TodoStorage.init(this.context);
+    initLearningStorage(this.context);
     BackgroundImage.init(this.context);
     migrate();
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');

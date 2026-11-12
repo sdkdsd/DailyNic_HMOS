@@ -1,5 +1,8 @@
 
 import { common } from '@kit.AbilityKit'
+import { LearningTask } from '../utils/LearningTasks';
+import { getLearningView } from '../utils/LearningStorage';
+import { LearningTaskList } from '../view/LearningTaskList';
 import { LengthUnit } from '@kit.ArkUI'
 
 import * as ScheduleSources from '../constants/ScheduleSources'
@@ -350,7 +353,12 @@ struct Index {
    * 仅在页面显示、返回首页以及用户手动点击刷新按钮时调用。
    */
   @State todoList: IndexedTodoItem[] = [];
+  @State learningTasks: LearningTask[] = [];
+  @State learningSummary: string = '';
   refreshTodo(): void {
+    const learning = getLearningView();
+    this.learningTasks = learning.tasks;
+    this.learningSummary = learning.summary;
     const list = filterItems((item: TodoItem): boolean => !item.done && !item.submitted);
     list.sort((a: IndexedTodoItem, b: IndexedTodoItem): number =>
       getEffectiveTime(a.item) - getEffectiveTime(b.item));
@@ -858,12 +866,15 @@ struct Index {
 
           if (this.showTodo) {
             Divider();
+            LearningTaskList({ tasks: this.learningTasks, summary: this.learningSummary,
+              onSync: () => { this.pageInfo.pushPath({ name: 'GetHomework' }); } })
+            Divider();
             if (this.todoList.length === 0) {
               Column() {
                 Image($r('app.media.lying_on_lounge'))
                   .height(100)
                   .draggable(false);
-                Text($r('app.string.no_todo_info1'))
+                Text(this.learningTasks.length > 0 ? '没有其他本地待办' : $r('app.string.no_todo_info1'))
                   .textAlign(TextAlign.Center);
               }
               .width('100%')

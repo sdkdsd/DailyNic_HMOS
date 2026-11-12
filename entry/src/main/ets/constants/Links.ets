@@ -44,7 +44,7 @@ export const LINK: LinkSet[] = [
   ] },
   { title: '本地工具', set: [
     { title: '待办', url: [{ url: 'Todo', notUrl: true }], icon: $r('app.media.calendar') },
-    { title: '作业导入 · 未适配', url: [{ url: 'GetHomework', notUrl: true }], icon: $r('app.media.cloud_download') },
+    { title: '学习通作业与考试', url: [{ url: 'GetHomework', notUrl: true }], icon: $r('app.media.cloud_download') },
     { title: '本地答题', url: [{ url: 'MockPracticeList', notUrl: true }], icon: $r('app.media.JiKaoZiCe') },
     { title: '适配说明', url: [{ url: 'Help', notUrl: true }], icon: $r('app.media.lightbulb') }
   ] }
