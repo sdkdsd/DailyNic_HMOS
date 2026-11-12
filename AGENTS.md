@@ -1,5 +1,7 @@
 # 项目地图
 
+> 2026-11-12交付归档：未签名sust.10及校验文件已上传用户fork的Release，公开下载回读校验通过。用户要求上传完成后清理本地checkout（移至回收站），外部DevEco/SDK/签名和旧柚独立项目保留。后续开发重新clone用户同一分支；个人调试签名包不公开。详见docs/DELIVERY.md。
+
 “妮可之记”陕西科技大学西安校区个人版；仅操作 sdkdsd/DailyNic_HMOS 的 codex/sust-xian-foundation，草稿 PR #1，不操作原作者仓库、不合并。
 
 先读 HANDOFF.md、docs/ONLINE-SCHEDULE.md、docs/LOCAL-HANDOFF.md、docs/DELIVERY.md 和 docs/BUILD-AND-TEST.md。最终目标是联网获取及刷新，文件导入只作备用，不固定本人课表。

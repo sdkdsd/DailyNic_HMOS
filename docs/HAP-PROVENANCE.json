@@ -57,8 +57,8 @@
     "Same-title future task with different source ID: host synthetic test only",
     "Online refresh after manual dismissal: host synthetic test only"
   ],
-  "download_url": null,
-  "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
+  "download_url": "https://github.com/sdkdsd/DailyNic_HMOS/releases/download/v2.3.0-sust.10/DailyNic-SUST-2.3.0-sust.10-a1e41d5-unsigned.hap",
+  "distribution": "Public release contains unsigned HAP and SHA256SUMS only. Personal signed HAP and debug profile are not uploaded.",
   "unsigned_artifact": {
     "file": "DailyNic-SUST-2.3.0-sust.10-a1e41d5-unsigned.hap",
     "bytes": 15156282,
@@ -88,5 +88,11 @@
       "Previous homework cache survived sust.6 installation and process restart"
     ]
   },
-  "source_note": "Built from working tree then committed unchanged as a1e41d5; build-generated BuildProfile has no semantic diff."
+  "source_note": "Built from working tree then committed unchanged as a1e41d5; build-generated BuildProfile has no semantic diff.",
+  "release_url": "https://github.com/sdkdsd/DailyNic_HMOS/releases/tag/v2.3.0-sust.10",
+  "public_download_verification": {
+    "bytes": 15156282,
+    "sha256": "e75bfdb621c8832398e314dbc504964c37e44f64111f822829a8973bcc5fde7f",
+    "result": "matches local unsigned artifact"
+  }
 }
