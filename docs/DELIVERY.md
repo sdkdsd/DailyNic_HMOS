@@ -1,39 +1,41 @@
-# 未签名 HAP 交付记录（sust.1 历史版本）
+# 未签名 HAP 交付记录
 
-2026-11-12：以下为已交付 sust.1 的历史记录；新增校历与季节作息正在构建 sust.2，尚未更新为该新版产物。**未签名，不能直接安装；没有经过鸿蒙 7 真机功能验收。**
+2026-11-12：`2.3.0-sust.2` 为新增校历和季节作息逻辑后的完整实际构建产物。**未签名，不能直接安装；没有经过鸿蒙 7 真机功能验收。**
 
 ## 下载与源码
 
-- [下载完整 HAP（本人 Google Drive）](https://drive.google.com/file/d/1d1C-tHaX67jOJF0pqEcn7PZyHX_u-OU8/view?usp=drivesdk)。文件元数据返回仅所有者权限；本次未修改共享权限。打开后使用下载按钮，保持 `.hap` 扩展名（Drive 识别其 ZIP 容器 MIME 不改变字节内容）。
-- 构建源码：[cf4a89642d1dc0fa412c704c94ed60fe21d2b6f9](https://github.com/sdkdsd/DailyNic_HMOS/commit/cf4a89642d1dc0fa412c704c94ed60fe21d2b6f9)。推送至 `codex/sust-xian-foundation`，PR #1 保持草稿，不合并。
-- 后续交付记录提交只增加本页及产物元数据，不修改应用源码。HAP 对应上面的完整源码提交，而不是后续文档提交。
-- 机器可读记录：[HAP-PROVENANCE.json](HAP-PROVENANCE.json)。工作区另有 `artifacts/` 及 `/workspace/shared/downloads/` 副本，二进制未加入 Git。
+- [下载完整 HAP（本人 Google Drive）](https://drive.google.com/file/d/1KTLrw8mYb-sQgncRkOf4rAe11Ky1CekB/view?usp=drivesdk)。用户明确授权本文件上传至本人已连接 Drive；元数据仅有所有者权限，未改变共享设置。下载后保留 `.hap` 扩展名。
+- 构建源码：[d997f151dbd27b1f4fb7eb78a781404f62833228](https://github.com/sdkdsd/DailyNic_HMOS/commit/d997f151dbd27b1f4fb7eb78a781404f62833228)，已推送到 `codex/sust-xian-foundation`；[PR #1](https://github.com/sdkdsd/DailyNic_HMOS/pull/1) 保持草稿，不合并。
+- 机器可读记录：[HAP-PROVENANCE.json](HAP-PROVENANCE.json)。交付记录的后续提交仅更新文档；HAP 对应上述构建源码提交。
+- [sust.1 历史交付](DELIVERY-sust.1.md) 仍保留；它没有本次新增的校历/季节功能，不能当作新版下载。
 
 | 项目 | 实际值 |
 | --- | --- |
-| 文件名 | `DailyNic-SUST-2.3.0-sust.1-cf4a896-unsigned.hap` |
-| 大小 | **14,876,571 字节**，约 14.19 MiB |
-| SHA-256 | `8de266b1e48deeb093cc89b08e9fdd626377a13fbb80860c9cf360b64d589aa2` |
+| 文件名 | `DailyNic-SUST-2.3.0-sust.2-d997f15-unsigned.hap` |
+| 大小 | **14,903,503 字节**，约 14.21 MiB |
+| SHA-256 | `d13b679239f9b9b2223433391a2ef2fad2351fe446964744e89052ca16b83995` |
 | 包名 | `com.sdkdsd.dailynic.sust` |
-| 版本 | `2.3.0-sust.1` / `2003001` |
+| 版本 | `2.3.0-sust.2` / `2003002` |
 | 编译 SDK | HarmonyOS `26.0.1.120`，`Beta1` |
-| target / minimum | `6.1.0(23)` / `6.1.0(23)`；manifest 编码均为 `60100023` |
-| 签名 | **未签名**；官方工具返回 `signature not found`，`No Hap Signing Block before ZIP Central Directory` |
-| 手机连接 | HDC `list targets` 返回 `[Empty]` |
-| 安装及真机功能 | 未执行 |
+| target / minimum | `6.1.0(23)` / `6.1.0(23)`，manifest 均为 `60100023` |
+| 签名 | **未签名**；官方工具返回 `signature not found` / `No Hap Signing Block before ZIP Central Directory` |
+| 安装及手机功能 | 未执行；此前 HDC 实查 `[Empty]`，没有新增设备或个人签名 |
 
-## 实际构建与核验
+## 新增功能与边界
 
-1. 在提交 `cf4a896`、工作区无受跟踪改动时执行 `bash build.sh clean`，真实经过 ArkTS 编译、资源编译、PackageHap 和 PackingCheck；`BUILD SUCCESSFUL`，42 个任务，36 个执行，6 个无需变更的模块任务。未使用原版目录缓存中的 HAP。
-2. 独立检查 297 个 ZIP 条目，CRC 通过，无重复条目；`ets/modules.abc`、`ets/widgets.abc`、资源索引及 manifest 存在且非空；包名和版本正确。密钥/证书后缀和私钥标记检查无命中。
-3. 交付副本与原始产物字节一致。上传后从 Drive **重新下载**，再次核对文件大小、完整 SHA-256 及 ZIP CRC，全部一致；不是仅验证上传成功。
-4. 官方 `hap-sign-tool verify-app` 对最终副本检查，没有签名块。ZIP 正常不代表签名有效或可安装。
-5. 已提交源码上 32 项主机回归测试通过；许可证和依赖锁文件未变化。上游警告仍有异常处理、弃用接口、2in1 能力和 ImagePreview BuilderParam 等，不能把编译成功当成全功能实测。
+- 本学期校历来自本人提供的教务处官网截图：第1周周一为2026-08-31，共20周，截至2027-01-17。点击应用后更新默认学期，课程及其他学期不被替换；增删课程不缩短已保存的校历周数。
+- 个人截图的第1–8节提供为可编辑草稿：冬季下午14:00、夏季14:30，上午相同；北京时间5月1日进入夏季、10月1日进入冬季。用户核对保存后启用。
+- **晚间第9–11节尚未预填**：截图第9节为50分钟，随后用户指出三节结束时间应为冬季21:20/夏季21:50，具体节内/课间分配仍待确认。没有将先前撤回的50分钟晚课推算装入交付包；有晚课时先补齐两季完整节次表。
+- 季节选择已接入首页今日/明日、桌面卡片今日/明日、查看周的课程详情、当前时间线和整学期日历事件。跨季周的左侧时间轴按周一，详情按课程当天，界面有提示。
+- 双季备份保留并比较两张时间表；旧单季配置仍可读取，不自动替换。已生成系统提醒不会自动重写，修改配置后需主动重新生成。
+- 节假日停课/补课映射、在线课表/考试、选课目录、作业导入和教室查询仍未实现。登录由本人在官方浏览器完成，不保存或传递学校凭据。
 
-GitHub 原分支推送成功；当前环境对 `api.github.com` 的网络访问被拒绝，浏览器未登录，连接器没有发行版附件上传接口，因此没有假称 GitHub Release 已上传。采用本人 Drive 文件交付；未发送凭据、改网络策略或公开文件。
+## 实测证据
 
-## 本人方便时
+1. 在源码提交 `d997f151dbd27b1f4fb7eb78a781404f62833228`、无受跟踪改动时执行 `bash build.sh clean`，真实 ArkTS/资源编译和 HAP 打包成功：42任务，36执行、6无变化。不是复制旧版 HAP。
+2. 已提交源码上 **39项主机测试通过**，包括校历跨年、夏冬季北京时间边界、整学期事件日期选时、卡片跨日、双季备份匹配和20周长度保持。主机测试不代表手机 API/UI 实测。
+3. 297个 ZIP 条目 CRC 正常、无重复；manifest、资源索引、应用/卡片字节码齐全；包名版本匹配。证书/密钥后缀及私钥标记检查无命中。
+4. 上传后从 Drive 重新下载，与构建文件逐字节一致；大小、SHA-256及 ZIP 校验再次通过。上传成功之外还有下载往返验证。
+5. 官方签名工具检查最终副本，明确无签名块。编译仍有原有弃用/异常处理/设备能力等警告，不能据编译成功宣称鸿蒙7全部功能可用。
 
-在自己的 DevEco Studio 使用华为正规个人调试签名，包名匹配 `com.sdkdsd.dailynic.sust`，Profile 包含本人手机；随后安装并执行 [真机验收清单](BUILD-AND-TEST.md)。不要发送密码、Cookie、令牌、私钥或签名密码。
-
-官方西安校区完整作息、首周日期及本科/研究生类型仍待核实，应用保持人工配置。在线课表/考试、选课目录、作业导入、教室查询仍为尚未实现；资料及脱敏样例清单见 [SUST-RESEARCH.md](SUST-RESEARCH.md)。逐项状态见 [ADAPTATION.md](ADAPTATION.md)。
+完整逐项状态见 [ADAPTATION.md](ADAPTATION.md)，规则来源见 [SUST-RESEARCH.md](SUST-RESEARCH.md)，正规签名和手机验收见 [BUILD-AND-TEST.md](BUILD-AND-TEST.md)。私钥、证书、私人课表和原始手机截图均未加入 Git；依赖和许可证没有升级或改写。

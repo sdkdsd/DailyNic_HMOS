@@ -1,13 +1,13 @@
 {
-  "file": "DailyNic-SUST-2.3.0-sust.1-cf4a896-unsigned.hap",
-  "bytes": 14876571,
-  "sha256": "8de266b1e48deeb093cc89b08e9fdd626377a13fbb80860c9cf360b64d589aa2",
-  "source_commit": "cf4a89642d1dc0fa412c704c94ed60fe21d2b6f9",
-  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/cf4a89642d1dc0fa412c704c94ed60fe21d2b6f9",
+  "file": "DailyNic-SUST-2.3.0-sust.2-d997f15-unsigned.hap",
+  "bytes": 14903503,
+  "sha256": "d13b679239f9b9b2223433391a2ef2fad2351fe446964744e89052ca16b83995",
+  "source_commit": "d997f151dbd27b1f4fb7eb78a781404f62833228",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/d997f151dbd27b1f4fb7eb78a781404f62833228",
   "source_worktree_clean_at_build": true,
   "bundleName": "com.sdkdsd.dailynic.sust",
-  "versionName": "2.3.0-sust.1",
-  "versionCode": 2003001,
+  "versionName": "2.3.0-sust.2",
+  "versionCode": 2003002,
   "compileSdkVersion": "26.0.1.120",
   "targetAPIVersion": 60100023,
   "minAPIVersion": 60100023,
@@ -18,7 +18,7 @@
   "signature_status": "UNSIGNED; cannot install directly",
   "signature_evidence": "Official hap-sign-tool verify-app: signature not found; No Hap Signing Block before ZIP Central Directory",
   "host_tests": {
-    "passed": 32,
+    "passed": 39,
     "node": "24.22.1",
     "scope": "logic, storage/API stubs, source constraints; no phone runtime"
   },
@@ -31,7 +31,8 @@
   "phone_installation": "not performed",
   "phone_tests": "not performed",
   "hdc_targets": "[Empty]",
-  "download_url": "https://drive.google.com/file/d/1d1C-tHaX67jOJF0pqEcn7PZyHX_u-OU8/view?usp=drivesdk",
+  "download_url": "https://drive.google.com/file/d/1KTLrw8mYb-sQgncRkOf4rAe11Ky1CekB/view?usp=drivesdk",
   "download_verification": "Downloaded from Drive again: size, SHA-256 and ZIP CRC match the local build",
-  "sharing": "Owner-only permission returned by Drive; no sharing permissions changed"
+  "sharing": "Owner-only permission returned by Drive; no sharing permissions changed",
+  "preset_scope": "2026-08-31 semester start, 20 weeks; personal winter/summer periods 1-8 only; evening periods 9-11 unresolved; no holiday makeup mapping"
 }
