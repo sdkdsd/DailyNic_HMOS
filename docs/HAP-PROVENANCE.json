@@ -1,14 +1,14 @@
 {
-  "file": "DailyNic-SUST-2.3.0-sust.4-1798468-personal-signed.hap",
-  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.4-1798468-personal-signed.hap",
-  "bytes": 15072826,
-  "sha256": "155393b70c1ed31c95b677e82a42f4136c74db48c2a94d488c62f7e31f75317d",
-  "source_commit": "179846835b6b152db115835758c464253950dde6",
-  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/179846835b6b152db115835758c464253950dde6",
+  "file": "DailyNic-SUST-2.3.0-sust.5-80a26c3-personal-signed.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.5-80a26c3-personal-signed.hap",
+  "bytes": 15162899,
+  "sha256": "db2f27a5f264a49b9fd0f394edb0878df6879558b8e8d49dd2c7472e4387f44e",
+  "source_commit": "80a26c39db2868c390b6aedaca72fac993a8851f",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/80a26c39db2868c390b6aedaca72fac993a8851f",
   "source_worktree_clean_at_build": true,
   "bundleName": "com.sdkdsd.dailynic.sust",
-  "versionName": "2.3.0-sust.4",
-  "versionCode": 2003004,
+  "versionName": "2.3.0-sust.5",
+  "versionCode": 2003005,
   "compileSdkVersion": "26.0.0.105",
   "targetAPIVersion": 60100023,
   "minAPIVersion": 60100023,
@@ -19,10 +19,10 @@
   "signature_status": "PERSONAL DEBUG SIGNED; local authorized device only",
   "signature_evidence": "Official hap-sign-tool verify-app: Verify success; verify-app success",
   "host_tests": {
-    "node_passed": 49,
-    "python_passed": 12,
+    "node_passed": 56,
+    "python_previous_passed": 12,
     "node": "24.16.0",
-    "scope": "logic, synthetic DOM, storage/API stubs and source constraints; separate phone evidence below"
+    "scope": "Synthetic logic, DOM and storage/API stubs. Python importer unchanged; its 12 passes are from sust.4."
   },
   "build_tools": {
     "node": "24.14.1",
@@ -34,17 +34,13 @@
     "system": "OpenHarmony-7.0.0.111",
     "api": 26
   },
-  "phone_installation": "HDC install and start succeeded for final signed artifact; existing timetable retained",
+  "phone_installation": "HDC install/start succeeded; official login page rendered; user login and both official task lists observed before cumulative-hour parsing fix.",
   "phone_tests": [
-    "personal school login",
-    "student and class full-table reading",
-    "preview 16 sessions, 7 duplicates, 1 cancellation",
-    "confirm save and repeated same-term update with zero changes",
-    "one online semester retained; prior empty semester preserved",
-    "home today/tomorrow and winter afternoon schedule",
-    "week 11 timetable including class sports",
-    "background then force-stop and cold start: cached timetable visible without login",
-    "final clean-build artifact installed and schedule remains visible"
+    "signed sust.5 installed and started",
+    "official Chaoxing login page rendered",
+    "user personally logged in",
+    "homework and exam list pages opened read-only",
+    "real cumulative-hour remaining time identified and parser fixed; fixed build installed"
   ],
   "phone_not_tested": [
     "actual school schedule change",
@@ -54,24 +50,27 @@
     "calendar permissions and lock-screen reminders",
     "file picker",
     "complete exams/todos workflows",
-    "coexistence with original app"
+    "coexistence with original app",
+    "Learning Tasks fixed parser real preview/save/repeat refresh",
+    "Learning Tasks home/todo display and cache cold start",
+    "empty/paginated task lists"
   ],
   "download_url": null,
   "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
   "unsigned_artifact": {
-    "file": "DailyNic-SUST-2.3.0-sust.4-1798468-unsigned.hap",
-    "bytes": 15014804,
-    "sha256": "fa43e0b7b425ad6d4de067acff56b214a06737a62e4f907d7ced8400808b55fc",
+    "file": "DailyNic-SUST-2.3.0-sust.5-80a26c3-unsigned.hap",
+    "bytes": 15102810,
+    "sha256": "e691bfb4926b4ee30dd6eb9c54750e444d799ec31fb16eeb19d0e69aaa723f19",
     "installation": "cannot install directly"
   },
   "unimplemented": [
     "background scheduled sync",
-    "online exams",
     "course catalog",
-    "homework import",
     "classroom query",
     "direct Excel/PDF import",
     "holiday makeup mapping",
-    "evening period preset 9-11"
+    "evening period preset 9-11",
+    "SUST EAMS online exams",
+    "Chaoxing chapters/notices deliberately out of scope"
   ]
 }

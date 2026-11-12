@@ -1,0 +1,77 @@
+{
+  "file": "DailyNic-SUST-2.3.0-sust.4-1798468-personal-signed.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.4-1798468-personal-signed.hap",
+  "bytes": 15072826,
+  "sha256": "155393b70c1ed31c95b677e82a42f4136c74db48c2a94d488c62f7e31f75317d",
+  "source_commit": "179846835b6b152db115835758c464253950dde6",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/179846835b6b152db115835758c464253950dde6",
+  "source_worktree_clean_at_build": true,
+  "bundleName": "com.sdkdsd.dailynic.sust",
+  "versionName": "2.3.0-sust.4",
+  "versionCode": 2003004,
+  "compileSdkVersion": "26.0.0.105",
+  "targetAPIVersion": 60100023,
+  "minAPIVersion": 60100023,
+  "apiReleaseType": "Release",
+  "build_command": "./build.ps1 -DevEcoHome <existing DevEco Studio> -Clean",
+  "zip_entries": 298,
+  "zip_crc": "passed",
+  "signature_status": "PERSONAL DEBUG SIGNED; local authorized device only",
+  "signature_evidence": "Official hap-sign-tool verify-app: Verify success; verify-app success",
+  "host_tests": {
+    "node_passed": 49,
+    "python_passed": 12,
+    "node": "24.16.0",
+    "scope": "logic, synthetic DOM, storage/API stubs and source constraints; separate phone evidence below"
+  },
+  "build_tools": {
+    "node": "24.14.1",
+    "hvigor": "6.26.4",
+    "java": "25.0.2"
+  },
+  "phone_device": {
+    "model": "MIA-AL00",
+    "system": "OpenHarmony-7.0.0.111",
+    "api": 26
+  },
+  "phone_installation": "HDC install and start succeeded for final signed artifact; existing timetable retained",
+  "phone_tests": [
+    "personal school login",
+    "student and class full-table reading",
+    "preview 16 sessions, 7 duplicates, 1 cancellation",
+    "confirm save and repeated same-term update with zero changes",
+    "one online semester retained; prior empty semester preserved",
+    "home today/tomorrow and winter afternoon schedule",
+    "week 11 timetable including class sports",
+    "background then force-stop and cold start: cached timetable visible without login",
+    "final clean-build artifact installed and schedule remains visible"
+  ],
+  "phone_not_tested": [
+    "actual school schedule change",
+    "natural session expiration",
+    "network physically disconnected",
+    "widgets and background refresh",
+    "calendar permissions and lock-screen reminders",
+    "file picker",
+    "complete exams/todos workflows",
+    "coexistence with original app"
+  ],
+  "download_url": null,
+  "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
+  "unsigned_artifact": {
+    "file": "DailyNic-SUST-2.3.0-sust.4-1798468-unsigned.hap",
+    "bytes": 15014804,
+    "sha256": "fa43e0b7b425ad6d4de067acff56b214a06737a62e4f907d7ced8400808b55fc",
+    "installation": "cannot install directly"
+  },
+  "unimplemented": [
+    "background scheduled sync",
+    "online exams",
+    "course catalog",
+    "homework import",
+    "classroom query",
+    "direct Excel/PDF import",
+    "holiday makeup mapping",
+    "evening period preset 9-11"
+  ]
+}
