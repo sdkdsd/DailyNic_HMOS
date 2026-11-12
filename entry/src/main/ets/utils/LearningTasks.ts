@@ -17,6 +17,13 @@ export function learningTime(stamp: number): string {
   const pad = (n: number): string => String(n).padStart(2, '0');
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
+// A server-rendered remaining-time label ages while the page stays open.
+// Anchor it to page load, never to a later tap on the read button.
+export function learningReadTime(loadedAt: number, now: number): number {
+  if (!Number.isFinite(loadedAt) || !Number.isFinite(now) || loadedAt <= 0 || now < loadedAt ||
+    now - loadedAt > 300000) throw new Error('stalePage');
+  return loadedAt;
+}
 function boundedText(text: string, max: number): boolean {
   return typeof text === 'string' && text.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text);
 }
@@ -32,7 +39,7 @@ export function learningDeadline(text: string, capturedAt: number): number {
   return capturedAt + ((days * 24 + hours) * 60 + minutes) * 60000;
 }
 function activeStatus(kind: string, status: string): boolean {
-  const pending = kind === 'homework' ? ['未提交', '未交', '待提交'] : ['未开始', '未考试', '待考试', '待考', '进行中', '考试中'];
+  const pending = kind === 'homework' ? ['未提交', '未交', '待提交'] : ['未开始', '未考试', '待考试', '待考', '进行中', '考试中', '未交', '未提交'];
   const closed = ['已提交', '待批阅', '已批阅', '已完成', '已结束', '已截止', '已考', '缺考'];
   if (pending.includes(status)) return true;
   if (closed.includes(status)) return false;

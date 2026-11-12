@@ -1,6 +1,6 @@
 import { webview } from '@kit.ArkWeb';
 import { LearningPage, LearningTask, LEARNING_HOMEWORK_URL, LEARNING_EXAM_URL,
-  learningNavigationAllowed, learningTime } from '../utils/LearningTasks';
+  learningNavigationAllowed, learningTime, learningReadTime } from '../utils/LearningTasks';
 import { LEARNING_READ_SCRIPT } from '../utils/LearningScript';
 import { LearningPreview, prepareLearningUpdate, confirmLearningUpdate } from '../utils/LearningStorage';
 
@@ -11,6 +11,8 @@ export function GHWBuilder(name: string, param?: Object) { LearningPageView(); }
 struct LearningPageView {
   private controller: webview.WebviewController = new webview.WebviewController();
   private revision: number = 0;
+  private pageLoadedAt: number = 0;
+  private webFailed: boolean = false;
   private pending: LearningPreview | null = null;
   @State busy: boolean = false;
   @State previewOpen: boolean = false;
@@ -18,18 +20,19 @@ struct LearningPageView {
   @State status: string = '请在官方页面亲自登录，再打开作业或考试列表读取。';
   @State webStatus: string = '正在连接学习通…';
   @State count: number = 0;
+  @State activeCount: number = 0;
 
   private openList(url: string): void {
-    this.pending = null; this.previewOpen = false; this.webStatus = '正在加载…';
+    this.pending = null; this.previewOpen = false; this.pageLoadedAt = 0; this.webFailed = false; this.webStatus = '正在加载…';
     try { this.controller.loadUrl(url); } catch (_) { this.webStatus = '网页尚未准备好，请稍后重试。'; }
   }
   private async readList(): Promise<void> {
     if (this.busy) return;
     this.busy = true; this.pending = null;
     const revision = this.revision;
-    const capturedAt = Date.now();
     let failure = '列表格式或状态尚未识别，未保存。';
     try {
+      const capturedAt = learningReadTime(this.pageLoadedAt, Date.now());
       const raw = await this.controller.runJavaScript(LEARNING_READ_SCRIPT);
       if (revision !== this.revision || raw.length > 1000000) throw new Error('page');
       const decoded: Object = JSON.parse(raw) as Object;
@@ -42,12 +45,16 @@ struct LearningPageView {
       }
       this.pending = prepareLearningUpdate(page, capturedAt);
       this.rows = this.pending.snapshot.tasks.filter((t: LearningTask) => t.observedAt === capturedAt && t.kind === page.kind);
+      this.rows.sort((a: LearningTask, b: LearningTask) => Number(b.active) - Number(a.active) ||
+        (a.dueAt || Number.MAX_SAFE_INTEGER) - (b.dueAt || Number.MAX_SAFE_INTEGER));
       this.count = this.pending.count;
+      this.activeCount = this.rows.filter((t: LearningTask) => t.active).length;
       this.previewOpen = true;
     } catch (error) {
       this.pending = null;
       const code = (error as Error).message;
-      if (code === 'deadline') failure = '列表的剩余时间格式尚未识别，请反馈此提示。';
+      if (code === 'stalePage') failure = '请点“作业”或“考试”刷新页面后读取；无需退出登录。';
+      else if (code === 'deadline') failure = '列表的剩余时间格式尚未识别，请反馈此提示。';
       else if (code === 'status') failure = '列表出现未识别的任务状态，请反馈此提示。';
       else if (code === 'row') failure = '列表条目的名称或标识不完整，请反馈此提示。';
       else if (code === 'duplicate') failure = '列表有重复标识，请刷新官方页面后重试。';
@@ -58,7 +65,7 @@ struct LearningPageView {
   }
   @Builder Preview() {
     Column({ space: 12 }) {
-      Text(`核对学习通事项 · ${this.count}条`).fontSize(20).fontWeight(FontWeight.Bold)
+      Text(`核对${this.count}条记录 · ${this.activeCount}条待办`).fontSize(20).fontWeight(FontWeight.Bold)
       Text('仅更新本页已读取的事项。已提交或已结束的条目不再显示为待办；未读到的旧事项保留。').fontSize(13)
       Scroll() {
         Column({ space: 12 }) {
@@ -102,14 +109,28 @@ struct LearningPageView {
           .onLoadIntercept((event) => {
             if (!event) return true;
             const allowed = learningNavigationAllowed(event.data.getRequestUrl());
-            if (!allowed && event.data.isMainFrame()) this.webStatus = '已停止未支持的网页跳转，请反馈此提示。';
+            if (!allowed && event.data.isMainFrame()) {
+              this.webFailed = true; this.pageLoadedAt = 0; this.pending = null;
+              this.webStatus = '已停止未支持的网页跳转，请反馈此提示。';
+            }
             return !allowed;
           })
-          .onPageBegin(() => { this.revision++; this.pending = null; this.previewOpen = false; })
-          .onPageEnd(() => { this.webStatus = '页面已加载，请完成登录或读取列表。'; })
-          .onErrorReceive((event) => { if (event?.request.isMainFrame()) this.webStatus = '网页加载失败，请检查网络后重新打开列表。'; })
-          .onHttpErrorReceive((event) => { if (event?.request.isMainFrame()) this.webStatus = '服务器未返回列表，请稍后重试。'; })
-          .onSslErrorEventReceive((event) => { event?.handler.handleCancel(); this.webStatus = '证书验证失败，连接已停止。'; })
+          .onPageBegin(() => { this.revision++; this.pageLoadedAt = 0; this.webFailed = false; this.pending = null; this.previewOpen = false; })
+          .onPageEnd(() => {
+            if (!this.webFailed) { this.pageLoadedAt = Date.now(); this.webStatus = '页面已加载，请完成登录或读取列表。'; }
+          })
+          .onErrorReceive((event) => { if (event?.request.isMainFrame()) {
+            this.webFailed = true; this.pageLoadedAt = 0; this.pending = null;
+            this.webStatus = '网页加载失败，请检查网络后重新打开列表。';
+          } })
+          .onHttpErrorReceive((event) => { if (event?.request.isMainFrame()) {
+            this.webFailed = true; this.pageLoadedAt = 0; this.pending = null;
+            this.webStatus = '服务器未返回列表，请稍后重试。';
+          } })
+          .onSslErrorEventReceive((event) => {
+            event?.handler.handleCancel(); this.webFailed = true; this.pageLoadedAt = 0; this.pending = null;
+            this.webStatus = '证书验证失败，连接已停止。';
+          })
           .layoutWeight(1).width('100%')
       }.padding(10).height('100%')
       .bindSheet($$this.previewOpen, this.Preview(), { height: SheetSize.LARGE, onDisappear: () => { this.pending = null; } })

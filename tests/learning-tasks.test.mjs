@@ -30,6 +30,22 @@ test('source IDs separate exams from homework and repeated reads update rather t
   assert.equal(logic.pendingLearningTasks(s).length, 2);
 });
 
+test('unsubmitted exams remain actionable without inventing a deadline or completed status', () => {
+  const tasks = logic.parseLearningPage(page([row('202', '未交', ''), row('203', '未提交', '')], 'exam'), now);
+  assert.equal(tasks.length, 2);
+  assert.ok(tasks.every(t => t.active && t.dueAt === 0));
+});
+
+test('waiting or reading twice does not move a server-rendered deadline; stale pages must refresh', () => {
+  const loadedAt = now - 120000;
+  const first = logic.parseLearningPage(page(), logic.learningReadTime(loadedAt, now));
+  const second = logic.parseLearningPage(page(), logic.learningReadTime(loadedAt, now + 60000));
+  assert.equal(first[0].dueAt, second[0].dueAt);
+  assert.equal(first[0].observedAt, loadedAt);
+  for (const [loaded, read] of [[0, now], [now + 1, now], [now - 300001, now], [NaN, now]])
+    assert.throws(() => logic.learningReadTime(loaded, read), /stalePage/);
+});
+
 test('explicit submitted or ended statuses retire tasks, absent rows retain prior observed state', () => {
   let s = logic.mergeLearningPage(logic.emptyLearningSnapshot(), page([row('1'), row('2')]), now);
   s = logic.mergeLearningPage(s, page([row('1', '待批阅')]), now + 1000);
