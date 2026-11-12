@@ -1,14 +1,14 @@
 {
-  "file": "DailyNic-SUST-2.3.0-sust.7-8d5221d-personal-signed.hap",
-  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.7-8d5221d-personal-signed.hap",
-  "bytes": 15159938,
-  "sha256": "ee5df14e6346813bcc42f660a0443968d0286286be05fd5b20389e2b6ba4c21c",
-  "source_commit": "8d5221dece20080c650a5113cba66a76221cd5d8",
-  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/8d5221dece20080c650a5113cba66a76221cd5d8",
+  "file": "DailyNic-SUST-2.3.0-sust.8-50896d3-personal-signed.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.8-50896d3-personal-signed.hap",
+  "bytes": 15186261,
+  "sha256": "3072bb72a0ca39a4857855222a60ec8b5065bef573d715038f207eda328c5ba5",
+  "source_commit": "50896d37b9507ed3a6d080aba04668b802c51165",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/50896d37b9507ed3a6d080aba04668b802c51165",
   "source_worktree_clean_at_build": true,
   "bundleName": "com.sdkdsd.dailynic.sust",
-  "versionName": "2.3.0-sust.7",
-  "versionCode": 2003007,
+  "versionName": "2.3.0-sust.8",
+  "versionCode": 2003008,
   "compileSdkVersion": "26.0.0.105",
   "targetAPIVersion": 60100023,
   "minAPIVersion": 60100023,
@@ -19,10 +19,10 @@
   "signature_status": "PERSONAL DEBUG SIGNED; local authorized device only",
   "signature_evidence": "Official hap-sign-tool verify-app: Verify success; verify-app success",
   "host_tests": {
-    "node_passed": 58,
+    "node_passed": 60,
     "python_previous_passed": 12,
     "node": "24.16.0",
-    "scope": "58 Node passes at sust.6; sust.7 changes only rendering keys and version, 9 learning tests re-run and passed. Real clean ArkTS/HAP build passed. Python importer unchanged; 12 passes are historical sust.4."
+    "scope": "All 60 Node tests passed, including 11 learning tests. Expiry boundary regression failed before the fix and passed after. Python unchanged; historical 12 passes at sust.4."
   },
   "build_tools": {
     "node": "24.14.1",
@@ -34,12 +34,12 @@
     "system": "OpenHarmony-7.0.0.111",
     "api": 26
   },
-  "phone_installation": "sust.7 HDC install -r and start succeeded after user clarified final update; no additional login requested.",
+  "phone_installation": "sust.8 installed and started successfully; no additional login requested.",
   "phone_tests": [
-    "Signed sust.7 installed and started",
-    "Schedule and manual exam retained after upgrade/process replacement",
-    "Both learning sources retained: 2 homework and 5 exam pending items, 7 unique on home across scrolling",
-    "Home existing rows display latest saved observed time after upgrade"
+    "Existing caches read successfully after upgrade",
+    "Home and Todo show no confirmed pending tasks and collapsed review group of 7 unknown-deadline records",
+    "Review group expands with uncertainty explanation and collapses again",
+    "No task titles visible in home while review group collapsed; no personal data deleted"
   ],
   "phone_not_tested": [
     "actual school schedule change",
@@ -51,14 +51,16 @@
     "complete exams/todos workflows",
     "coexistence with original app",
     "empty/paginated task lists",
-    "Same-ID content change followed by online refresh and immediate row rerender: no additional login/read in sust.7"
+    "Real task crossing expiry while screen stays open: minute timer not device-tested",
+    "New unlimited/ended deadline markers on a fresh official read: host synthetic coverage only",
+    "Updated online preview in sust.8: no additional login/read requested"
   ],
   "download_url": null,
   "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
   "unsigned_artifact": {
-    "file": "DailyNic-SUST-2.3.0-sust.7-8d5221d-unsigned.hap",
-    "bytes": 15107611,
-    "sha256": "f4f06433c4105d404e915d444631e00f29b9df7c8093ef83835875bc74726907",
+    "file": "DailyNic-SUST-2.3.0-sust.8-50896d3-unsigned.hap",
+    "bytes": 15126699,
+    "sha256": "7eff3f418862403384379b62f859fbc839af500f338acc037c418dd8ef474a96",
     "installation": "cannot install directly"
   },
   "unimplemented": [

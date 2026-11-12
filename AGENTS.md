@@ -12,7 +12,7 @@
 
 ## 核心入口
 
-- 学习通仅作业/考试/截止时间：先读 docs/LEARNING-TASKS.md；GetHomework.ets、LearningTasks.ts、LearningScript.ts、LearningStorage.ets、LearningTaskList.ets。独立只读来源，不动手动待办；sust.6手机两类列表读取保存/重复读取已验；sust.7已安装且两类缓存冷启动通过；同ID联网更新后的动态行刷新待下次正常使用核对，不扩展章节任务/通知。
+- 学习通仅作业/考试/截止时间：先读 docs/LEARNING-TASKS.md；GetHomework.ets、LearningTasks.ts、LearningScript.ts、LearningStorage.ets、LearningTaskList.ets。独立只读来源，不动手动待办；sust.6手机两类列表读取保存/重复读取已验；sust.8已安装；过期过滤主机通过，期限未知默认折叠手机通过；真实跨截止/重新开放待日常使用核对，不扩展章节任务/通知。
 
 - entry/src/main/ets/utils/CampusTime.ts、CampusConfig.ets、SustCalendar.ts：北京时间、校历、已确认第1–8节冬夏作息。5月1日夏季、10月1日冬季；晚课暂缓。
 - scripts/sust_import.py：离线表格转换；tests/test_sust_import.py 只用合成数据。
