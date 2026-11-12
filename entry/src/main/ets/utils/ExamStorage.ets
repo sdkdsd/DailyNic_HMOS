@@ -37,7 +37,8 @@ function loadExam(): examAttribute[] {
   }
   try {
     if (fileIo.accessSync(examFilePath)) {
-      examCache = JSON.parse(fileIo.readTextSync(examFilePath)) as examAttribute[];
+      const parsed = JSON.parse(fileIo.readTextSync(examFilePath)) as examAttribute[];
+      if (Array.isArray(parsed)) examCache = parsed;
     }
   } catch (e) {
     console.error('ExamStorage: failed to load exam file:', JSON.stringify(e));
@@ -48,14 +49,16 @@ function loadExam(): examAttribute[] {
   return examCache;
 }
 
-function flushExam(): void {
+function flushExam(data: examAttribute[]): void {
+  const temporaryPath = examFilePath + '.tmp';
+  const file = fileIo.openSync(temporaryPath, fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
   try {
-    const file = fileIo.openSync(examFilePath, fileIo.OpenMode.WRITE_ONLY | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
-    fileIo.writeSync(file.fd, JSON.stringify(examCache ?? []));
+    fileIo.writeSync(file.fd, JSON.stringify(data));
+    fileIo.fsyncSync(file.fd);
+  } finally {
     fileIo.closeSync(file);
-  } catch (e) {
-    console.error('ExamStorage: failed to save exam file:', JSON.stringify(e));
   }
+  fileIo.renameSync(temporaryPath, examFilePath);
 }
 
 export function getExams(): examAttribute[] {
@@ -63,16 +66,15 @@ export function getExams(): examAttribute[] {
 }
 
 export function setExams(data: examAttribute[]): void {
+  flushExam(data);
   examCache = data;
-  flushExam();
 }
 
 /**
  * 清除全部考试数据（用于故障恢复页面）。
  */
 export function clearExamData(): void {
-  examCache = [];
-  flushExam();
+  setExams([]);
 }
 
 /**
@@ -83,8 +85,6 @@ export function clearExamData(): void {
 export function importLegacyData(legacy: examAttribute[]): void {
   const data = loadExam();
   if (legacy.length > 0 && data.length === 0) {
-    data.push(...legacy);
-    examCache = data;
-    flushExam();
+    setExams(data.concat(legacy));
   }
 }

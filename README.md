@@ -1,161 +1,41 @@
+# 妮可之记 · 陕科大西安校区个人版
 
-<div align="center">
+这是 [sdkdsd/DailyNic_HMOS](https://github.com/sdkdsd/DailyNic_HMOS) 的修改版本，基于 [Your-USTC/DailyNic_HMOS](https://github.com/Your-USTC/DailyNic_HMOS)，不是学校官方应用或原作者的官方发行版。原版权 © 2026 YourUSTC Developer Team；代码沿用 GPL-3.0-or-later。上游介绍保存在 [docs/README.upstream.md](docs/README.upstream.md)。
 
-# <image src="AppScope/resources/base/media/icon_round.png" height="28" width="28"/> 妮可之记 <br> <font size="4">for HarmonyOS NEXT</font>
+**本分支已完成真实 ArkTS/HAP 构建、本人正规调试签名及鸿蒙7手机安装启动。手机已通过学校本人登录、学生/班级整表读取保存、同学期重复刷新、首页/周课表和缓存冷启动验证；卡片与提醒等仍待验收。** 已实现主动联网读取学生/班级课表、预览合并及同学期刷新，不内置个人课程，无需逐门添加。原主题、主界面、本地课表/考试、待办、桌面卡片、背景和本地答题继续保留。后台定时刷新、考试同步、选课目录、作业导入、教室查询尚未实现。
 
-<image src="resources/introduction.png" width="100%"/>
+- [本次 HAP 与源码交付记录](docs/DELIVERY.md)
+- [联网获取与刷新课表](docs/ONLINE-SCHEDULE.md)
+- [功能状态、环境差异与测试记录](docs/ADAPTATION.md)
+- [学校资料核查与安全接入方案](docs/SUST-RESEARCH.md)
+- [构建、签名、手机验证与维护](docs/BUILD-AND-TEST.md)
+- [版权与素材来源](docs/ATTRIBUTION.md)
 
-[![Stars](https://img.shields.io/github/stars/Your-USTC/DailyNic_HMOS)](https://github.com/Your-USTC/DailyNic_HMOS)
-&nbsp;
-[![Forks](https://img.shields.io/github/forks/Your-USTC/DailyNic_HMOS)](https://github.com/Your-USTC/DailyNic_HMOS)
+## 本地使用流程（尚需手机验证）
 
-[![Release](https://img.shields.io/github/v/release/Your-USTC/DailyNic_HMOS)](https://github.com/Your-USTC/DailyNic_HMOS/releases/latest)
-&nbsp;
-[![Downloads](https://img.shields.io/github/downloads/Your-USTC/DailyNic_HMOS/total)](https://github.com/Your-USTC/DailyNic_HMOS/releases/latest)
+1. 安装本 fork 的签名测试包后，从“课时与校历设置”填写官方校历的第 1 教学周周一、每节起止时间及核对依据。提供本人上传的教务处本学期校历（2026-08-31开始、20周）及个人截图第1–8节作息草稿，保存前须核对；晚间第9–11节仍待补齐。夏冬季按北京时间5月1日和10月1日自动切换；节假日补课映射仍未实现，不沿用中科大作息。
+2. 在课表菜单选择联网获取，在应用内学校网页亲自登录。分别读取全部教学周的学生和班级整张课表，核对首周日期及合并预览后确认。再次读取同学期会更新已有在线学期，离线保留最近结果；也可手动补充课程。单双周用教学周序号，周日属于前一个周一开始的那一周。
+3. 考试和待办可手动管理，考试时间按北京时间解析并校验。日历写入由用户主动触发、授权；变化后重新生成并核对。桌面卡片刷新由系统调度，需真机验证。
+4. 联网课表使用临时 WebView 会话，退出后可能需要本人重新登录；其他官方入口仍可用系统浏览器。应用不保存密码、不读取 Cookie、不注册凭据桥接，也不自动执行选课、预约、支付等业务。
+5. 文件导入为备用方式：单季 `sust-xian-1` 或双季 `sust-xian-2-seasonal` JSON，须匹配当前课时配置，预览确认后整批追加为本地学期。备份不包含完整考试、待办、图片等数据；系统完整备份未实测。电脑可离线转换已支持的可见教务表格；不支持直接 Excel/PDF 导入。
 
-![Repo size](https://img.shields.io/github/repo-size/Your-USTC/DailyNic_HMOS)
-&nbsp;
-![ArkTS](https://img.shields.io/badge/ArkTS-blue)
+## 验证与构建
 
-### 中国科大一站式导航 · 开启你的智慧校园
+主机逻辑测试无需安装依赖，使用现有 Node 24：
 
-###### [App 主页](https://dailynic.feixu.site/) | [华为应用商店 AppGallery](https://appgallery.huawei.com/app/detail?id=com.nic.dailynic) | [用户协议 & 隐私政策](https://cdn.jsdelivr.net/gh/Your-USTC/DailyNic_HMOS@main/entry/src/main/resources/rawfile/TermsOfUse.html)
-
-</div>
-
-> [!NOTE]
-> 此为最终版本，旧版内容请移步`legacy`分支
-
-## 功能介绍
-
-### 课程与考试信息管理
-
-- [x] 从教务系统自动提取课表/考试信息，并导入到本地
-- [x] 在首页显示今日与明日课程、考试倒计时
-- [x] 点击课程/考试以查看显示详情
-- [x] 手动添加、修改、删除、导入和导出课程/考试
-- [x] 将课程/考试导入系统日历，设置提醒时间，或清除本 App 创建的所有日程
-- [x] 在多个学期的课表之间切换
-- [x] 针对可能的错误和崩溃启用恢复模式
-
-### 校园常用功能链接
-
-- [x] 在功能页分类显示链接，并用内置浏览器打开
-- [x] 显示“最常访问”，并可清空或定制显示数量
-- [x] 内置浏览器支持切换 UA、前进/后退、上传/下载文件、释放缓存、在系统浏览器中打开
-
-### 用户界面 (UI) 和其它
-
-- [x] 适配鸿蒙多端设备（手机/平板/PC）
-- [x] 适配浅色/深色模式
-- [x] 可高度自定义背景图片，支持设置不同的主题色以与背景图相适应
-- [x] 网页可强制以深色模式显示
-- [x] 定制首页功能
-- [x] “你的课表”和“考试信息”可添加至桌面卡片
-
-## 软件截图
-
-### Mate 70 Pro+
-<image src="resources/phone_1.png" width="160"/><image src="resources/phone_2.png" width="160"/><image src="resources/phone_3.png" width="160"/><image src="resources/phone_4.png" width="160"/>
-
-### MatePad Air 12 2025
-<image src="resources/pad.png" width="480"/>
-
-## 系统要求
-`HarmonyOS NEXT 6.1.0`及以上版本
-
-## 开发指南
-
-### 环境构建
-
-1. 注册一个华为[开发者账号](https://developer.huawei.com/consumer/cn/)，如果仅运行在自己的设备上则无需实名认证
-2. 下载 [DevEco Studio 6.0.0](https://developer.huawei.com/consumer/cn/deveco-studio/)
-3. Fork 本仓库并将 Fork 后你自己的仓库下载到本地
-4. 将 `build-profile.json5.bak` 重命名为 `build-profile.json5` 并配置签名
-5. 将 `entry/src/main/ets/utils/Encryption.ets.bak` 重命名为 `Encryption.ets` 并配置 RSA 密钥
-6. （可选）修改相应 链接/图标 和 课表/考试 提取函数
-7. 在手机/平板的系统设置中，打开“xxx的xxx”（例如：user的Mate 70 Pro+），连续点击“软件版本”7次，启用“开发者选项”（需要输入密码并重启）
-8. 转到 设置→系统→开发者选项→打开“USB调试”
-9. 在 DevEco Studio 中打开项目，将手机/平板连接到电脑并信任你的电脑，然后点击标题栏中的绿色三角形，即可安装到你的手机/平板上。需要登录华为账号并在右上角<image src="resources/signature.png" style="vertical-align: top; height: 1.2em;"/>处签名
-
-### 项目结构
-
-<details>
-<summary>查看</summary>
-
-```
-AppScope/                                   // 应用信息、全局资源
-
-entry/src/main/
-│
-├── module.json5                            // 主程序配置信息
-│
-├── resources/                              // 主程序资源目录
-│   └── base/profile/                       // 页面、卡片、快捷方式配置
-│
-└── ets/                                    // 源代码目录
-    │
-    │   // 应用程序
-    │
-    ├── entryability/
-    │   └── EntryAbility.ets                // 应用程序入口点
-    │
-    ├── pages/
-    │   ├── Index.ets                       // 应用程序主体框架
-    │   ├── Webview.ets                     // 浏览器页面
-    │   ├── Schedule.ets                    // 本地课表页面
-    │   ├── ExamDetail.ets                  // 本地考试信息页面
-    │   ├── GetSchedule.ets                 // 同步在线课表、考试页面
-    │   ├── Help.ets                        // 帮助页面
-    │   ├── About.ets                       // 关于页面
-    │   └── FaultOccurred.ets               // 恢复模式页面
-    │
-    ├── constants/
-    │   ├── ScheduleSources.ets             // 课表数据结构
-    │   ├── GridListDataSources.ets         // 功能页按钮表
-    │   ├── GridListIcons.ets               // 功能页图标表
-    │   ├── Links.ets                       // 功能页链接表
-    │   ├── ListDataConstants.ets           // 功能页分区标题表
-    │   ├── SettingsSources.ets             // 设置页选项表
-    │   └── UserAgent.ets                   // Webview UA 参数
-    │
-    ├── utils/
-    │   ├── CheckIn.ets                     // 签到功能
-    │   ├── ExamManager.ets                 // 考试信息管理类
-    │   ├── FunctionOrder.ets               // 最常访问功能
-    │   ├── TimeTable.ets                   // 课表管理类、在线课表获取脚本
-    │   ├── tools.ets                       // 公共工具区
-    │   ├── UnifyPreference.ets             // 全局共享首选项读写功能
-    │   ├── WriteCalendar.ets               // 系统日历读写功能
-    │   │
-    │   ├── jsencrypt/                      // 加密功能
-    │   └── Encryption.ets                  // 加密功能接口
-    │
-    ├── view/
-    │   ├── BgImageManager.ets              // 背景图片控制
-    │   ├── BgImageDialog.ets               // 背景图片弹窗
-    │   ├── GridComponent.ets               // 功能组件
-    │   ├── SettingsComponent.ets           // 设置项组件
-    │   └── PasswordDialog.ets              // 账号密码弹窗
-    │
-    │   // 服务卡片
-    │
-    ├── entryformability/
-    │   └── EntryFormAbility.ets            // 卡片生命周期接口
-    │
-    └── class_schedule_daily/
-        ├── pages/
-        │   └── Class_schedule_dailyCard.ets// 卡片主程序
-        ├── view/
-        │   └── CardListComponent.ets       // 卡片框架
-        └── viewmodel/
-            └── CardListParameter.ets       // 卡片构造函数
+```bash
+node --test tests/*.test.mjs
+bash build.sh --check
 ```
 
-</details>
+在已经具备 HarmonyOS 工具链的环境中：
 
-## 开源许可
+```bash
+# 仅在本地配置文件不存在时复制；不要覆盖已有签名配置
+cp -n build-profile.json5.bak build-profile.json5
+bash build.sh
+```
 
-[<image src="https://gnu.ac.cn/graphics/gplv3-or-later.svg" height="18"/> **GNU General Public License v3.0 (GPLv3)**](LICENSE)
+`build.sh` 会使用存在的 `/workspace/.cloud-tools/dailynic/activate.sh`，或 PATH 中的 `hvigorw` / 显式 `HVIGORW`。它不安装软件、不生成密钥、不提高目标 SDK、不停止已有构建守护进程、不安装到手机。依赖缺失时按构建文档先审查安装步骤。
 
-DailyNic  Copyright © 2026  YourUSTC Developer Team
+本版本**无需创建 `Encryption.ets` 或生成 RSA 密钥**；上游模板仅留作历史参考，不被应用导入。本地签名文件、证书、密钥、个人课表都不能提交到仓库。

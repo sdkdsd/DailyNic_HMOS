@@ -1,0 +1,87 @@
+{
+  "file": "DailyNic-SUST-2.3.0-sust.7-8d5221d-personal-signed.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.7-8d5221d-personal-signed.hap",
+  "bytes": 15159938,
+  "sha256": "ee5df14e6346813bcc42f660a0443968d0286286be05fd5b20389e2b6ba4c21c",
+  "source_commit": "8d5221dece20080c650a5113cba66a76221cd5d8",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/8d5221dece20080c650a5113cba66a76221cd5d8",
+  "source_worktree_clean_at_build": true,
+  "bundleName": "com.sdkdsd.dailynic.sust",
+  "versionName": "2.3.0-sust.7",
+  "versionCode": 2003007,
+  "compileSdkVersion": "26.0.0.105",
+  "targetAPIVersion": 60100023,
+  "minAPIVersion": 60100023,
+  "apiReleaseType": "Release",
+  "build_command": "./build.ps1 -DevEcoHome <existing DevEco Studio> -Clean",
+  "zip_entries": 298,
+  "zip_crc": "passed",
+  "signature_status": "PERSONAL DEBUG SIGNED; local authorized device only",
+  "signature_evidence": "Official hap-sign-tool verify-app: Verify success; verify-app success",
+  "host_tests": {
+    "node_passed": 58,
+    "python_previous_passed": 12,
+    "node": "24.16.0",
+    "scope": "58 Node passes at sust.6; sust.7 changes only rendering keys and version, 9 learning tests re-run and passed. Real clean ArkTS/HAP build passed. Python importer unchanged; 12 passes are historical sust.4."
+  },
+  "build_tools": {
+    "node": "24.14.1",
+    "hvigor": "6.26.4",
+    "java": "25.0.2"
+  },
+  "phone_device": {
+    "model": "MIA-AL00",
+    "system": "OpenHarmony-7.0.0.111",
+    "api": 26
+  },
+  "phone_installation": "sust.7 HDC install -r and start succeeded after user clarified final update; no additional login requested.",
+  "phone_tests": [
+    "Signed sust.7 installed and started",
+    "Schedule and manual exam retained after upgrade/process replacement",
+    "Both learning sources retained: 2 homework and 5 exam pending items, 7 unique on home across scrolling",
+    "Home existing rows display latest saved observed time after upgrade"
+  ],
+  "phone_not_tested": [
+    "actual school schedule change",
+    "natural session expiration",
+    "network physically disconnected",
+    "widgets and background refresh",
+    "calendar permissions and lock-screen reminders",
+    "file picker",
+    "complete exams/todos workflows",
+    "coexistence with original app",
+    "empty/paginated task lists",
+    "Same-ID content change followed by online refresh and immediate row rerender: no additional login/read in sust.7"
+  ],
+  "download_url": null,
+  "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
+  "unsigned_artifact": {
+    "file": "DailyNic-SUST-2.3.0-sust.7-8d5221d-unsigned.hap",
+    "bytes": 15107611,
+    "sha256": "f4f06433c4105d404e915d444631e00f29b9df7c8093ef83835875bc74726907",
+    "installation": "cannot install directly"
+  },
+  "unimplemented": [
+    "background scheduled sync",
+    "course catalog",
+    "classroom query",
+    "direct Excel/PDF import",
+    "holiday makeup mapping",
+    "evening period preset 9-11",
+    "SUST EAMS online exams",
+    "Chaoxing chapters/notices deliberately out of scope"
+  ],
+  "previous_phone_validation": {
+    "version": "2.3.0-sust.6",
+    "provenance": "HAP-PROVENANCE-sust.6.json",
+    "tests": [
+      "Personal login and both official lists opened in one session",
+      "60 homework records previewed and saved: 2 pending",
+      "52 exam records previewed and saved: 5 unsubmitted, deadline unknown",
+      "Repeated exam read/save remained 52 records and 5 pending; estimated dates unchanged",
+      "Todo view showed 7 unique pending items across scrolling; submitted/reviewed/completed excluded",
+      "Home showed merged source summaries and homework/exams; existing rows retained stale read time (known rendering issue)",
+      "Previous homework cache survived sust.6 installation and process restart"
+    ]
+  }
+}

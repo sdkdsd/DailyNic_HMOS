@@ -18,3 +18,21 @@ github
 github.pub
 /private
 desktop.ini
+# Local signing, credentials and personal exports (never commit)
+/entry/src/main/ets/utils/Encryption.ets
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.p7b
+*.cer
+*.pem
+*.key
+.env
+.env.*
+!*.example
+/artifacts/
+/private-data/
+
+__pycache__/
+*.pyc

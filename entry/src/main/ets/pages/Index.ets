@@ -1,5 +1,8 @@
 
 import { common } from '@kit.AbilityKit'
+import { LearningTask } from '../utils/LearningTasks';
+import { getLearningView } from '../utils/LearningStorage';
+import { LearningTaskList } from '../view/LearningTaskList';
 import { LengthUnit } from '@kit.ArkUI'
 
 import * as ScheduleSources from '../constants/ScheduleSources'
@@ -17,14 +20,15 @@ import { TodoItem, TodoType, IndexedTodoItem, filterItems, getEffectiveTime } fr
 
 import BackgroundImage, { presetColor } from '../utils/BgImageManager'
 import { GridComponent, MostRecentComponent } from '../view/GridComponent'
-import PasswordDialog from '../view/PasswordDialog'
+import { campusReady, SCHOOL_LOGIN, refreshCampusTimes, periodsForDate } from '../utils/CampusConfig';
+import { teachingWeek, chinaDayStart, chinaWeekday } from '../utils/CampusTime';
 import ItemData from '../view/SettingsComponent'
 
 import display from '@ohos.display'
 import { WantAbility } from '../utils/WantAbility'
 import { currentAppVersion, initHostContext, deviceType, hostContext } from '../constants/BasicConstants'
 import { hdsMaterial, HdsTabs, HdsTabsController } from '@kit.UIDesignKit'
-import accountInfoProvider from '../utils/Encryption'
+
 import { LinkSet, LINK, SimpleLink, MultiLink } from '../constants/Links'
 import { SearchResultItem, doSearch, SearchResultComponent } from '../view/FunctionSearch'
 // import { SplitPlaceholder } from '../view/SplitPlaceholder'
@@ -44,15 +48,6 @@ struct Index {
 
   @State currentIndex: number = 0; // 当前标签索引 (从0开始), 初始值即为默认标签索引
   private tabsController: HdsTabsController = new HdsTabsController();
-
-  @Provide displayUsername: string = accountInfoProvider.getUID();
-  dialogController: CustomDialogController = new CustomDialogController({
-    builder: PasswordDialog({
-      isFromSetting: true,
-    }),
-    autoCancel: false,
-    gridCount: 4
-  });
 
   /**
    * 函数: 构建 Tab 按钮
@@ -104,33 +99,35 @@ struct Index {
   @State webBackPress: boolean = UnifiedPreferences.getBoolSync('webBackPress', true);
   @State currentTime: Date = new Date();
   private autoRefreshTimer: number = -1;
+  private refreshStartTimer: number = -1;
 
   onPageShow(): void { // 切后台回来时也执行，即使不在当前页面
-    console.log('test!!!')
     this.refreshInfo(); // 立即刷新，然后计划刷新
     this.refreshTodo(); // 待办独立刷新，不随每分钟自动刷新
     this.scheduleAutoRefresh();
   }
 
-  onPageHide(): void {
-    console.log('test!!!')
-    if (this.autoRefreshTimer !== -1) {
-      clearInterval(this.autoRefreshTimer);
-    }
+  private stopAutoRefresh(): void {
+    if (this.refreshStartTimer !== -1) clearTimeout(this.refreshStartTimer);
+    if (this.autoRefreshTimer !== -1) clearInterval(this.autoRefreshTimer);
+    this.refreshStartTimer = this.autoRefreshTimer = -1;
+  }
+
+  onPageHide(): void { this.stopAutoRefresh(); }
+
+  aboutToDisappear(): void {
+    this.stopAutoRefresh();
+    hostContext().eventHub.off('navigation');
   }
 
   private scheduleAutoRefresh(): void {
-    // 计算到下一个整分钟（0秒）的延迟
-    console.log('test!!!')
+    this.stopAutoRefresh();
     const now = new Date();
     const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
-    setTimeout(() => {
-      console.log('test!!!')
+    this.refreshStartTimer = setTimeout(() => {
+      this.refreshStartTimer = -1;
       this.refreshInfo();
-      // 之后每60秒刷新一次
-      this.autoRefreshTimer = setInterval(() => {
-        this.refreshInfo();
-      }, 60000);
+      this.autoRefreshTimer = setInterval((): void => { this.refreshInfo(); }, 60000);
     }, delay);
   }
 
@@ -308,28 +305,31 @@ struct Index {
   /*
    * 常用功能
    */
+  @State campusConfigured: boolean = campusReady();
   @State termState: number = 0; // 0：未开始，1：进行中，2: 进行中但今天无课程，3: 进行中但今天的课都上完了，4：已结束
   private currentWeek: number = 1;
   private todayBeginTime: number = 0;
   refreshInfo() {
-    console.log('test!!!')
+    if (ScheduleManager.semesters.length === 0) ScheduleManager.init();
+    this.campusConfigured = campusReady();
     this.currentTime = new Date();
+    refreshCampusTimes(this.currentTime.getTime());
     const termStartTime: number = ScheduleManager.semesters[ScheduleManager.defaultSemester].beginTime;
-    this.todayBeginTime = new Date(this.currentTime).setHours(0, 0, 0, 0);
-    if (this.currentTime.getTime() < termStartTime) {
+    this.todayBeginTime = chinaDayStart(this.currentTime.getTime());
+    if (!campusReady() || this.currentTime.getTime() < termStartTime) {
       this.termState = 0;
       this.currentWeek = 1;
       this.todayCourse = [];
       this.tomorrowCourse = [];
-    } else if (this.currentTime.getTime() > termStartTime + ScheduleManager.semesters[ScheduleManager.defaultSemester].totalWeekNum * millisecondsPerWeek) {
+    } else if (this.currentTime.getTime() >= termStartTime + ScheduleManager.semesters[ScheduleManager.defaultSemester].totalWeekNum * millisecondsPerWeek) {
       this.termState = 4;
       this.currentWeek = 1;
       this.todayCourse = [];
       this.tomorrowCourse = [];
     } else {
-      this.currentWeek = Math.ceil((this.currentTime.getTime() - termStartTime) / millisecondsPerWeek);
-      this.todayCourse = ScheduleManager.getDefaultClassByDay(this.currentWeek, this.currentTime.getDay(), true);
-      this.tomorrowCourse = ScheduleManager.getDefaultClassByDay(this.currentWeek + (this.currentTime.getDay() === 6 ? 1 : 0), (this.currentTime.getDay() + 1) % 7, true);
+      this.currentWeek = teachingWeek(this.currentTime.getTime(), termStartTime);
+      this.todayCourse = ScheduleManager.getDefaultClassByDay(this.currentWeek, chinaWeekday(this.currentTime.getTime()), true);
+      this.tomorrowCourse = ScheduleManager.getDefaultClassByDay(this.currentWeek + (chinaWeekday(this.currentTime.getTime()) === 0 ? 1 : 0), (chinaWeekday(this.currentTime.getTime()) + 1) % 7, true);
       if (this.todayCourse.length === 0)
         this.termState = 2;
       else if (this.currentTime.getTime() > this.todayBeginTime + ScheduleSources.commonClassStamp[this.todayCourse[this.todayCourse.length - 1].timeSpan[this.todayCourse[this.todayCourse.length - 1].timeSpan.length - 1]][1])
@@ -337,6 +337,12 @@ struct Index {
       else
         this.termState = 1;
     }
+
+    const tomorrowTime = this.currentTime.getTime() + 86400000;
+    const tomorrowWeek = teachingWeek(tomorrowTime, termStartTime);
+    this.tomorrowCourse = campusReady() && tomorrowWeek >= 1 &&
+      tomorrowWeek <= ScheduleManager.semesters[ScheduleManager.defaultSemester].totalWeekNum ?
+      ScheduleManager.getDefaultClassByDay(tomorrowWeek, chinaWeekday(tomorrowTime), true) : [];
 
     examManager.readStoredExam();
     this.exams = examManager.allExamInfo.filter(item => this.currentTime.getTime() <= item.endTimeStamp);
@@ -347,7 +353,14 @@ struct Index {
    * 仅在页面显示、返回首页以及用户手动点击刷新按钮时调用。
    */
   @State todoList: IndexedTodoItem[] = [];
+  @State learningTasks: LearningTask[] = [];
+  @State uncertainLearningTasks: LearningTask[] = [];
+  @State learningSummary: string = '';
   refreshTodo(): void {
+    const learning = getLearningView();
+    this.learningTasks = learning.tasks;
+    this.uncertainLearningTasks = learning.uncertain;
+    this.learningSummary = learning.summary;
     const list = filterItems((item: TodoItem): boolean => !item.done && !item.submitted);
     list.sort((a: IndexedTodoItem, b: IndexedTodoItem): number =>
       getEffectiveTime(a.item) - getEffectiveTime(b.item));
@@ -517,7 +530,9 @@ struct Index {
           if (this.showRecentCourse) {
             Divider();
 
-            if (this.termState === 0) {
+            if (!this.campusConfigured) {
+              Text('尚未配置西安校区校历与作息，不能判断今日课程。点击课表先完成核对。').padding(20)
+            } else if (this.termState === 0) {
               Column() {
                 Image($r('app.media.no_course_term_not_start'))
                   .height(100)
@@ -684,7 +699,7 @@ struct Index {
                       .textOverflow({ overflow: TextOverflow.Ellipsis })
                       .visibility(course.location === '' ? Visibility.None : Visibility.Visible);
 
-                    Text(`\udb80\udfdc ${ScheduleSources.commonClassTime[course.timeSpan[0]][0]}~${ScheduleSources.commonClassTime[course.timeSpan[course.timeSpan.length - 1]][1]}`)
+                    Text(`\udb80\udfdc ${periodsForDate(this.currentTime.getTime() + 86400000)[course.timeSpan[0]][0]}~${periodsForDate(this.currentTime.getTime() + 86400000)[course.timeSpan[course.timeSpan.length - 1]][1]}`)
                       .fontSize(14)
                       .maxLines(1)
                       .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -853,12 +868,15 @@ struct Index {
 
           if (this.showTodo) {
             Divider();
+            LearningTaskList({ tasks: this.learningTasks, uncertain: this.uncertainLearningTasks, onChanged: () => this.refreshTodo(), summary: this.learningSummary,
+              onSync: () => { this.pageInfo.pushPath({ name: 'GetHomework' }); } })
+            Divider();
             if (this.todoList.length === 0) {
               Column() {
                 Image($r('app.media.lying_on_lounge'))
                   .height(100)
                   .draggable(false);
-                Text($r('app.string.no_todo_info1'))
+                Text(this.learningTasks.length > 0 ? '没有其他本地待办' : $r('app.string.no_todo_info1'))
                   .textAlign(TextAlign.Center);
               }
               .width('100%')
@@ -1058,7 +1076,7 @@ struct Index {
             .onClick(() => BackgroundImage.pickAvatar().then(() => {
               this.avatar = BackgroundImage.avatar;
             }))
-          Text(this.displayUsername || $r('app.string.welcome_to_your_ustc'))
+          Text('妮可之记 · 陕科大个人版')
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .layoutWeight(1)
@@ -1070,7 +1088,7 @@ struct Index {
           }
           .width(36)
           .height(36)
-          .onClick(() => this.dialogController.open())
+          .onClick(() => this.pageInfo.pushPath({ name: 'CampusSetup' }))
 
           Button({ buttonStyle: ButtonStyleMode.NORMAL, type: ButtonType.Circle }) {
             Image($r('app.media.person'))
@@ -1080,10 +1098,7 @@ struct Index {
           .width(36)
           .height(36)
           .onClick(() => {
-            this.pageInfo.clear();
-            this.pageInfo.pushPath({ name: "Webview", param: {
-              title: $r('app.string.GeRenZhongXin'),
-              url: 'https://id.ustc.edu.cn/gate/cas-success/personal-center-home-page' } as SimpleLink });
+            WantAbility.StartBrowser(hostContext(), SCHOOL_LOGIN);
           })
         }
         .width('100%')
@@ -1093,6 +1108,15 @@ struct Index {
       .backgroundColor(BackgroundImage.blurLevel === undefined ? $r('app.color.grid_background') : '#0000')
       .backgroundBlurStyle(BackgroundImage.blurLevel)
       .borderRadius(20)
+
+      ListItem() {
+        Row() {
+          Text('已移除的学习通待办').fontSize(16).layoutWeight(1)
+          Text('›').fontSize(24)
+        }.padding(16).width('100%')
+      }.borderRadius(20)
+      .backgroundColor($r('app.color.grid_background'))
+      .onClick(() => this.pageInfo.pushPath({ name: 'LearningRemoved' }))
 
       ForEach(SettingsData.getSettingListData(), (item: ItemData[], _index: number) => {
         ListItemGroup() {
@@ -1296,6 +1320,12 @@ struct Index {
       .hideTitleBar(true)
       .hideToolBar(true)
       .mode(this.adaptSplit)
+      .onNavBarStateChange((visible: boolean) => {
+        if (visible) {
+          this.refreshInfo();
+          this.refreshTodo();
+        }
+      })
       .onNavigationModeChange((mode: NavigationMode) => {
         this.isSplit = mode;
       })

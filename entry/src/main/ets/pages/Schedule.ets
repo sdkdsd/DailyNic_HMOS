@@ -1,3 +1,6 @@
+import { campusReady, periodCount, firstTeachingMonday, getCampusProfile, periodsForDate, stampsForDate } from '../utils/CampusConfig';
+import { mondayStart, mondayOffset, chinaWeekday, chinaDayStart, teachingWeek, expandWeeks, parsePeriods } from '../utils/CampusTime';
+import { CampusSetup } from './CampusSetup';
 
 import { PopoverDialog, Popup } from '@kit.ArkUI';
 import * as ScheduleSources from '../constants/ScheduleSources';
@@ -12,6 +15,7 @@ import RenameDialog from '../view/RenameDialog';
 import { JSON } from '@kit.ArkTS';
 import { currentScheduleVersion, FULL_TIME_FORMAT } from '../constants/BasicConstants';
 import MessageDialog from '../view/MessageDialog';
+import { previewScheduleImport, confirmScheduleImport } from '../utils/ScheduleImport';
 
 interface PopupOnStateChangeInfo {
   isVisible: boolean;
@@ -23,8 +27,10 @@ const font13fpHeight: number = 16; // 包括行间距
 
 @Builder
 export function ScheduleBuilder(name: string, param?: number) {
-  if (param)
-    Schedule({ gridHeight: param, maxLinesH: Math.max(1, (param / 13 - classAndTeacher) / font13fpHeight) });
+  if (!campusReady()) {
+    CampusSetup();
+  } else if (param)
+    Schedule({ gridHeight: param, maxLinesH: Math.max(1, (param / periodCount() - classAndTeacher) / font13fpHeight) });
   else
     Schedule({ gridHeight: UnifiedPreferences.getNumberSync('GridHeight', 500) })
 }
@@ -53,6 +59,68 @@ struct Schedule {
   private timeLineTimer: number = -1;
 
   msgDialogController?: CustomDialogController;
+  @State showImportPreview: boolean = false;
+  @State importPreview: exportSemester[] = [];
+  private pendingImport: exportedData | null = null;
+  private importBusy: boolean = false;
+
+  @Builder ImportPreview() {
+    Column({ space: 12 }) {
+      Text('核对后导入课表').fontSize(22).fontWeight(FontWeight.Bold)
+      Text('将追加为新学期。默认学期保持不变；班级补充请核对本人是否修读。确认前不会保存。').fontSize(14)
+      Scroll() {
+        Column({ space: 12 }) {
+          ForEach(this.importPreview, (semester: exportSemester) => {
+            Column({ space: 6 }) {
+              Text(semester.attribute.name).fontSize(18).fontWeight(FontWeight.Bold)
+              Text(`${semester.attribute.totalWeekNum} 周 · ${semester.courses.length} 条课程安排`).fontSize(14)
+              Text(semester.attribute.source).fontSize(12)
+              ForEach(semester.courses, (course: classAttribute) => {
+                Column({ space: 3 }) {
+                  Text(course.name).fontWeight(FontWeight.Bold)
+                  Text(`星期${'日一二三四五六'.charAt(course.dayOfWeek)} · 第${course.timeSpan.join('、')}节 · 第${course.weekOfTerm.join('、')}周`).fontSize(13)
+                  Text(`${course.location} ${course.teacher}`).fontSize(13)
+                }.alignItems(HorizontalAlign.Start).width('100%').padding(8)
+              })
+            }.alignItems(HorizontalAlign.Start).width('100%')
+          })
+        }.width('100%')
+      }.layoutWeight(1).width('100%')
+      Row({ space: 16 }) {
+        Button('取消').onClick(() => {
+          this.pendingImport = null;
+          this.showImportPreview = false;
+        })
+        Button('确认追加').onClick(() => {
+          if (this.importBusy || this.pendingImport === null) return;
+          this.importBusy = true;
+          const incoming = this.pendingImport;
+          let firstIndex: number;
+          try {
+            firstIndex = confirmScheduleImport(incoming);
+          } catch (error) {
+            this.importBusy = false;
+            this.getUIContext().getPromptAction().showToast({ message: '未保存，请核对作息、文件及存储后重试' });
+            return;
+          }
+          // Once persisted, discard the pending batch before any UI refresh can fail.
+          this.pendingImport = null;
+          this.showImportPreview = false;
+          try {
+            ScheduleManager.init();
+            ScheduleManager.switchTempSemester(firstIndex + incoming.defaultSemester);
+            this.initSchedule();
+            this.refreshGrid();
+            this.getUIContext().getPromptAction().showToast({ message: '已追加课表，可在学期管理中设为默认' });
+          } catch (error) {
+            this.getUIContext().getPromptAction().showToast({ message: '课表已保存，请重新打开页面；无需重复导入' });
+          } finally {
+            this.importBusy = false;
+          }
+        })
+      }
+    }.padding(20).height('100%').width('100%')
+  }
   @State showXiuHint: boolean = false;
   @Builder xiuHintPopup() {
     Row() {
@@ -160,41 +228,50 @@ struct Schedule {
    */
   @State showSheet: boolean = false;
   private classInfo: ScheduleSources.classAttribute = {
-    name: '计算机程序设计',
-    teacher: '李卫海',
-    location: '3A212',
-    id: 'CS1003.H2',
-    weekOfTerm: [2, 3, 4, 6, 7, 8, 9, 10, 14, 15, 16],
-    timeSpan: [6, 7],
+    name: '',
+    teacher: '',
+    location: '',
+    id: '',
+    weekOfTerm: [1],
+    timeSpan: [1],
     dayOfWeek: 1,
     color: tools.colorSet[tools.getRandomInt(0, tools.colorSetLen - 1)],
     priority: 5,
-    credits: '3'
+    credits: ''
   };
   private oriClassInfo: ScheduleSources.classAttribute = {
-    name: '计算机程序设计',
-    teacher: '李卫海',
-    location: '3A212',
-    id: 'CS1003.H2',
-    weekOfTerm: [2, 3, 4, 6, 7, 8, 9, 10, 14, 15, 16],
-    timeSpan: [6, 7],
+    name: '',
+    teacher: '',
+    location: '',
+    id: '',
+    weekOfTerm: [1],
+    timeSpan: [1],
     dayOfWeek: 1,
     color: tools.colorSet[tools.getRandomInt(0, tools.colorSetLen - 1)],
     priority: 5,
-    credits: '3'
+    credits: ''
   };
 
   private rectifyTimeSpan: number[] = [this.oriClassInfo.timeSpan[0], this.oriClassInfo.timeSpan[this.oriClassInfo.timeSpan.length - 1]];
-  private rectifyWeekOfTerm: boolean[] = [true, false, true, true, true, false, true, true, true, true, true,
-    false, false, false, true, true, true, false, false, false, false];
+  private rectifyWeekOfTerm: boolean[] = [false, true, ...Array(29).fill(false)];
   @State isWeeksLegal: boolean = true;
-  @State weekOfTerm: number[] = tools.getContArray([[2, 4], [6, 10], [14, 16]]) as number[];
+  @State weekExpression: string = '';
+  @State weekOfTerm: number[] = [1];
   @State isColorLegal: boolean = true;
   private changeAllColor: boolean = true;
 
   private checkBoxGroup: number = 0;
 
   private isChangeSchedule: boolean = true;
+
+  private validateDraft(): boolean {
+    if (!this.classInfo.name.trim() || this.weekOfTerm.length === 0 ||
+      this.classInfo.timeSpan.some((p: number) => p < 1 || p > periodCount())) {
+      this.getUIContext().getPromptAction().showToast({ message: '请填写课程名称并选择有效的上课周和节次' });
+      return false;
+    }
+    return true;
+  }
 
   private createArray = (start: number, end: number): Array<SelectOption> => {
     const arr: Array<SelectOption> = [];
@@ -327,50 +404,52 @@ struct Schedule {
    */
   @Builder editMenu() {
     Menu() {
+      MenuItem({ content: '课时与校历设置' }).onClick(() => { this.pathStack.pushPath({ name: 'CampusSetup' }); })
       MenuItem({ content: $r('app.string.class_detail_new'), startIcon: $r('app.media.plus_square') })
         .onClick(() => {
           this.checkBoxGroup = (this.checkBoxGroup + 1) % 2;
           this.isChangeSchedule = false;
+          this.weekExpression = '';
           this.oriClassInfo = {
-            name: '计算机程序设计',
-            teacher: '李卫海',
-            location: '3A212',
-            id: 'CS1003.H2',
-            weekOfTerm: tools.getContArray([[2, 4], [6, 10], [14, 16]]) as number[],
-            timeSpan: [6, 7],
+            name: '',
+            teacher: '',
+            location: '',
+            id: '',
+            weekOfTerm: [1],
+            timeSpan: [1],
             dayOfWeek: 1,
             color: tools.colorSet[tools.getRandomInt(0, tools.colorSetLen - 1)],
             priority: 5,
-            credits: '3'
+            credits: ''
           };
           this.classInfo = {
-            name: '计算机程序设计',
-            teacher: '李卫海',
-            location: '3A212',
-            id: 'CS1003.H2',
-            weekOfTerm: tools.getContArray([[2, 4], [6, 10], [14, 16]]) as number[],
-            timeSpan: [6, 7],
+            name: '',
+            teacher: '',
+            location: '',
+            id: '',
+            weekOfTerm: [1],
+            timeSpan: [1],
             dayOfWeek: 1,
             color: tools.colorSet[tools.getRandomInt(0, tools.colorSetLen - 1)],
             priority: 5,
-            credits: '3'
+            credits: ''
           };
+          this.weekOfTerm = [1];
+          this.isWeeksLegal = true;
           this.classColor = this.oriClassInfo.color;
-          this.rectifyWeekOfTerm = [true, false, true, true, true, false, true, true, true, true, true,
-            false, false, false, true, true, true, false, false, false, false];
-          this.rectifyTimeSpan = [6, 7];
+          this.rectifyWeekOfTerm = [false, true, ...Array(29).fill(false)];
+          this.rectifyTimeSpan = [1, 1];
           this.showSheet = true;
         });
       MenuItem({ content: $r('app.string.online_schedule'), startIcon: $r('app.media.cloud_download')})
         .onClick(() => {
           this.pathStack.pushPath({ name: "GetSchedule",
-            param: [$r('app.string.online_schedule'), 'https://jw.ustc.edu.cn/for-std/course-table'],
             onPop: (popInfo: PopInfo) => {
               if (typeof popInfo.result === 'number' && popInfo.result < ScheduleManager.semesters.length) {
                 ScheduleManager.switchTempSemester(popInfo.result);
-                this.initSchedule();
-                this.refreshGrid();
               }
+              this.initSchedule();
+              this.refreshGrid();
             }
           });
         });
@@ -391,31 +470,16 @@ struct Schedule {
               this.getUIContext().getPromptAction().showToast({ message: $r('app.string.read_file_cancel') });
             } else {
               try {
-                console.log('1!!!');
-                console.log('!!!' + result);
-                const rawImportedData = JSON.parse(result) as exportedData;
-                const checkResult = ScheduleSources.validateExportedData(rawImportedData);
-                if (checkResult === '') {
-                  const oldNum: number = ScheduleManager.semesters.length;
-                  let currentTime = Date.now();
-                  rawImportedData.semesters.forEach(importSemester => {
-                    ScheduleManager.newSemester(importSemester.attribute.name, importSemester.attribute.source, importSemester.attribute.beginTime, ++currentTime, importSemester.attribute.totalWeekNum, importSemester.courses);
-                  })
-                  if (rawImportedData.semesters.length > 0) {
-                    ScheduleManager.switchTempSemester(oldNum + rawImportedData.defaultSemester);
-                    this.initSchedule();
-                    this.refreshGrid();
-                  }
-                  this.showSemesters = true;
-                  this.getUIContext().getPromptAction().showToast({ message: '导入成功' });
-                } else {
-                  this.getUIContext().getPromptAction().showToast({ message: checkResult });
-                }
+                this.pendingImport = previewScheduleImport(result);
+                this.importPreview = this.pendingImport.semesters;
+                this.showImportPreview = true;
               } catch(error) {
-                console.log('!!!' + JSON.stringify(error));
-                this.getUIContext().getPromptAction().showToast({ message: $r('app.string.read_file_format_error') });
+                this.pendingImport = null;
+                this.getUIContext().getPromptAction().showToast({ message: '文件无效或作息不匹配，请先核对个人配置' });
               }
             }
+          }).catch(() => {
+            this.getUIContext().getPromptAction().showToast({ message: '备份读取失败，请重新选择有效的 JSON 文件（最大 5 MiB）' });
           });
         });
 
@@ -424,7 +488,9 @@ struct Schedule {
           const saveTime: number = Math.trunc(Date.now() / 1000);
           let userContent: exportedData = {
             exportTime: saveTime,
-            scheduleVersion: currentScheduleVersion,
+            scheduleVersion: getCampusProfile()?.summerPeriodsText !== undefined ? 'sust-xian-2-seasonal' : currentScheduleVersion,
+            periods: parsePeriods(getCampusProfile()!.periodsText),
+            summerPeriods: getCampusProfile()?.summerPeriodsText !== undefined ? parsePeriods(getCampusProfile()!.summerPeriodsText!) : undefined,
             defaultSemester: ScheduleManager.defaultSemester,
             semesters: Array.from(ScheduleManager.semesters, (semester) => {
               return {
@@ -513,7 +579,7 @@ struct Schedule {
                 Text() {
                   Span('\udb80\udfdc ');
                   Span(weekTranslate[lesson.dayOfWeek]);
-                  Span(` ${ScheduleSources.commonClassTime[lesson.timeSpan[0]][0]}-${ScheduleSources.commonClassTime[lesson.timeSpan[lesson.timeSpan.length - 1]][1]}`);
+                  Span(` ${periodsForDate(this.weekStart + mondayOffset(lesson.dayOfWeek) * 86400000)[lesson.timeSpan[0]][0]}-${periodsForDate(this.weekStart + mondayOffset(lesson.dayOfWeek) * 86400000)[lesson.timeSpan[lesson.timeSpan.length - 1]][1]}`);
                 }
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -555,7 +621,7 @@ struct Schedule {
             };
             this.classColor = this.oriClassInfo.color;
             this.rectifyWeekOfTerm = [];
-            for (let weekRepeat = 1; weekRepeat <= 20; weekRepeat++) {
+            for (let weekRepeat = 1; weekRepeat <= 30; weekRepeat++) {
               this.rectifyWeekOfTerm[weekRepeat] = false;
             }
             for (let weekRepeat of lesson.weekOfTerm) {
@@ -630,7 +696,7 @@ struct Schedule {
         .onClick(() => {
           const currentTime: Date = new Date();
           const currentTimestamp: number = currentTime.getTime();
-          ScheduleManager.newSemester('自定义名称', '手动添加', currentTime.setHours(0, 0, 0, 0) - 86400000 * currentTime.getDay(), currentTimestamp);
+          ScheduleManager.newSemester('自定义名称', '手动添加', firstTeachingMonday(), currentTimestamp);
           ScheduleManager.switchTempSemester(ScheduleManager.semesters.length - 1);
           this.initSchedule();
           this.refreshGrid();
@@ -727,9 +793,9 @@ struct Schedule {
                   const currentTime: Date = new Date();
                   const currentTimestamp: number = currentTime.getTime();
                   if (idx === this.displayTerm)
-                    ScheduleManager.newSemester(this.displayName + '_副本', '从「' + this.displayName + '」复制', currentTime.setHours(0, 0, 0, 0) - 86400000 * currentTime.getDay(), currentTimestamp, undefined, this.thisWeekSchedule);
+                    ScheduleManager.newSemester(this.displayName + '_副本', '从「' + this.displayName + '」复制', this.semesters[idx].beginTime, currentTimestamp, undefined, this.thisWeekSchedule);
                   else
-                    ScheduleManager.newSemester(this.semesters[idx].name + '_副本', '从「' + this.semesters[idx].name + '」复制', currentTime.setHours(0, 0, 0, 0) - 86400000 * currentTime.getDay(), currentTimestamp, undefined, ScheduleStorage.getCourses(this.semesters[idx].createTime));
+                    ScheduleManager.newSemester(this.semesters[idx].name + '_副本', '从「' + this.semesters[idx].name + '」复制', this.semesters[idx].beginTime, currentTimestamp, undefined, ScheduleStorage.getCourses(this.semesters[idx].createTime));
                   ScheduleManager.switchTempSemester(ScheduleManager.semesters.length - 1);
                   this.initSchedule();
                   this.refreshGrid();
@@ -784,7 +850,7 @@ struct Schedule {
                       showTime: false,
                       selectedTextStyle: { color: presetColor[BackgroundImage.themeColor].accentColor },
                       onDateAccept: (value: Date) => {
-                        ScheduleManager.changeSemesterStartTime(idx, value.setHours(0, 0, 0, 0) - 86400000 * value.getDay());
+                        ScheduleManager.changeSemesterStartTime(idx, mondayStart(value.getTime()));
                         if (this.displayTerm === idx) {
                           this.initSchedule();
                           this.refreshGrid();
@@ -859,7 +925,7 @@ struct Schedule {
       return b.timeSpan[0] - a.timeSpan[0];
     });
 
-    const flag: boolean[][] = Array(7).fill(null).map(() => Array(14).fill(false));
+    const flag: boolean[][] = Array(7).fill(null).map(() => Array(periodCount() + 1).fill(false));
     let noConflict: boolean;
     for (let i = rawData.length - 1; i >= 0; i--) {
       noConflict = true;
@@ -884,12 +950,12 @@ struct Schedule {
     this.displayTerm = ScheduleManager.displaySemester;
     this.semesters = ScheduleManager.semesters;
     const termStartTime: number = this.semesters[this.displayTerm].beginTime;
-    if (currentTime.getTime() < termStartTime || currentTime.getTime() > termStartTime + this.semesters[this.displayTerm].totalWeekNum * millisecondsPerWeek) {
+    if (currentTime.getTime() < termStartTime || currentTime.getTime() >= termStartTime + this.semesters[this.displayTerm].totalWeekNum * millisecondsPerWeek) {
       this.currentWeek = this.weekDisplayed = 1;
       this.currentWeekStart = this.weekStart = termStartTime;
     } else {
-      this.currentWeek = this.weekDisplayed = Math.ceil((currentTime.getTime() - termStartTime) / millisecondsPerWeek);
-      this.currentWeekStart = this.weekStart = new Date(new Date(currentTime).setDate(currentTime.getDate() - currentTime.getDay())).setHours(0, 0, 0, 0);
+      this.currentWeek = this.weekDisplayed = teachingWeek(currentTime.getTime(), termStartTime);
+      this.currentWeekStart = this.weekStart = mondayStart(currentTime.getTime());
     }
     this.displayName = this.semesters[this.displayTerm].name;
   }
@@ -901,29 +967,34 @@ struct Schedule {
   updateTimeLine(): void {
     const now: Date = new Date();
     const nowStamp: number = now.getTime();
-    const dayStamp: number = nowStamp - now.setHours(0, 0, 0, 0);
+    const dayStamp: number = nowStamp - chinaDayStart(nowStamp);
+    if (!campusReady()) { this.showTimeLine = false; return; }
+    const stamps = stampsForDate(nowStamp);
     if (nowStamp < this.weekStart || nowStamp >= this.weekStart + millisecondsPerWeek
-      || dayStamp < ScheduleSources.commonClassStamp[1][0] || dayStamp >= ScheduleSources.commonClassStamp[13][1]) {
+      || dayStamp < stamps[1][0] || dayStamp >= stamps[periodCount()][1]) {
       this.showTimeLine = false;
       return;
     }
-    let period: number = 13;
+    let period: number = periodCount();
     let fraction: number = 1;
-    for (let i = 1; i <= 13; i++) {
-      if (dayStamp < ScheduleSources.commonClassStamp[i][1]) {
+    for (let i = 1; i <= periodCount(); i++) {
+      if (dayStamp < stamps[i][1]) {
         period = i;
-        fraction = dayStamp < ScheduleSources.commonClassStamp[i][0] ? 0 :
-          (dayStamp - ScheduleSources.commonClassStamp[i][0]) / (ScheduleSources.commonClassStamp[i][1] - ScheduleSources.commonClassStamp[i][0]);
+        fraction = dayStamp < stamps[i][0] ? 0 :
+          (dayStamp - stamps[i][0]) / (stamps[i][1] - stamps[i][0]);
         break;
       }
     }
     this.showTimeLine = true;
-    this.timeLineFraction = (period - 1 + fraction) / 13;
-    this.timeLineLeftPercent = (now.getDay() + 1) * 12.5;
+    this.timeLineFraction = (period - 1 + fraction) / periodCount();
+    this.timeLineLeftPercent = (mondayOffset(chinaWeekday(now.getTime())) + 1) * 12.5;
   }
 
   aboutToAppear(): void {
-    this.updateTimeLine();
+    // The custom title is rendered before NavDestination.onReady/onShown.
+    // Populate the semester and week before its first totalWeekNum access.
+    this.initSchedule();
+    this.refreshGrid();
     this.timeLineTimer = setInterval(() => this.updateTimeLine(), 60000); // 每60秒刷新一次
   }
 
@@ -948,47 +1019,10 @@ struct Schedule {
              */
             GridItem({ style: GridItemStyle.NONE }) {
               Row() {
-                // 上午、下午、晚上
-                Column() {
-                  Text($r('app.string.morning'))
-                    .fontWeight(FontWeight.Bold)
-                    .fontSize(14)
-                    .layoutWeight(5)
-                    .width('100%')
-                    .textAlign(TextAlign.Center)
-                    .border({
-                      width: { right: 0.6 },
-                      color: $r('app.color.grid_border')
-                    })
-
-                  Text($r('app.string.afternoon'))
-                    .fontWeight(FontWeight.Bold)
-                    .fontSize(14)
-                    .layoutWeight(5)
-                    .width('100%')
-                    .textAlign(TextAlign.Center)
-                    .border({
-                      width: { top: 0.6, right: 0.6 },
-                      color: $r('app.color.grid_border')
-                    })
-
-                  Text($r('app.string.evening'))
-                    .fontWeight(FontWeight.Bold)
-                    .fontSize(14)
-                    .layoutWeight(3)
-                    .width('100%')
-                    .textAlign(TextAlign.Center)
-                    .border({
-                      width: { top: 0.6, right: 0.6 },
-                      color: $r('app.color.grid_border')
-                    })
-                }
-                .layoutWeight(1)
-
-                // 13节课
+                // 按个人核对作息显示节次
                 Column() {
                   Column() {
-                    Text(ScheduleSources.commonClassTime[1][0])
+                    Text(periodsForDate(this.weekStart)[1][0])
                       .fontSize('8fp')
                       .visibility(this.hideTime ? Visibility.None : Visibility.Visible)
 
@@ -997,7 +1031,7 @@ struct Schedule {
                       .fontSize(14)
                       .align(Alignment.Center)
 
-                    Text(ScheduleSources.commonClassTime[1][1])
+                    Text(periodsForDate(this.weekStart)[1][1])
                       .fontSize('8fp')
                       .visibility(this.hideTime ? Visibility.None : Visibility.Visible)
                   }
@@ -1017,9 +1051,9 @@ struct Schedule {
                       this.hideTime = false;
                   });
 
-                  ForEach(tools.getContArray([[2, 13]]), (item: number) => {
+                  ForEach(tools.getContArray([[2, periodCount()]]), (item: number) => {
                     Column() {
-                      Text(ScheduleSources.commonClassTime[item][0])
+                      Text(periodsForDate(this.weekStart)[item][0])
                         .fontSize('8fp')
                         .visibility(this.hideTime ? Visibility.None : Visibility.Visible)
 
@@ -1028,7 +1062,7 @@ struct Schedule {
                         .fontSize(14)
                         .align(Alignment.Center)
 
-                      Text(ScheduleSources.commonClassTime[item][1])
+                      Text(periodsForDate(this.weekStart)[item][1])
                         .fontSize('8fp')
                         .visibility(this.hideTime ? Visibility.None : Visibility.Visible)
                     }
@@ -1047,7 +1081,7 @@ struct Schedule {
               }
             }
             .rowStart(0)
-            .rowEnd(12)
+            .rowEnd(periodCount() - 1)
             .columnStart(0)
             .columnEnd(0)
             .backgroundBlurStyle(BackgroundImage.blurLevel)
@@ -1076,7 +1110,7 @@ struct Schedule {
                 .borderRadius(12);
               }
               .rowStart(0)
-              .rowEnd(10)
+              .rowEnd(periodCount() - 1)
               .columnStart(1)
               .columnEnd(7);
             } else {
@@ -1131,7 +1165,7 @@ struct Schedule {
                   };
                   this.classColor = this.oriClassInfo.color;
                   this.rectifyWeekOfTerm = [];
-                  for (let weekRepeat = 1; weekRepeat <= 20; weekRepeat++) {
+                  for (let weekRepeat = 1; weekRepeat <= 30; weekRepeat++) {
                     this.rectifyWeekOfTerm[weekRepeat] = false;
                   }
                   for (let weekRepeat of lesson.weekOfTerm) {
@@ -1142,8 +1176,8 @@ struct Schedule {
                 })
                 .rowStart(lesson.timeSpan[0] - 1)
                 .rowEnd(lesson.timeSpan[lesson.timeSpan.length - 1] - 1)
-                .columnStart(lesson.dayOfWeek + 1)
-                .columnEnd(lesson.dayOfWeek + 1)
+                .columnStart(mondayOffset(lesson.dayOfWeek) + 1)
+                .columnEnd(mondayOffset(lesson.dayOfWeek) + 1)
                 .padding(2)
                 .backgroundColor(lesson.color)
                 .border({
@@ -1155,7 +1189,7 @@ struct Schedule {
           }
           // .id('schedule_grid')
           .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr') // 8 列
-          .rowsTemplate('1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr') // 13 行
+          .rowsTemplate(Array(periodCount()).fill('1fr').join(' '))
           .height(this.gridHeight)
           .bindPopup(this.showPinchHint, {
             builder: this.pinchHintPopup(),
@@ -1204,14 +1238,14 @@ struct Schedule {
       .onSizeChange((_oldValue: SizeOptions, newValue: SizeOptions) => {
         this.gridMinHeight = Math.max(208, tools.LengthToNumber(newValue.height, 1000) >> 1); // 神秘数字208
         if (this.gridHeight < this.gridMinHeight)
-          this.maxLinesH = Math.max(1, ((this.gridHeight = this.gridMinHeight) / 13 - classAndTeacher) / font13fpHeight);
+          this.maxLinesH = Math.max(1, ((this.gridHeight = this.gridMinHeight) / periodCount() - classAndTeacher) / font13fpHeight);
       })
       .gesture(PinchGesture({ fingers: 2 })
         .onActionStart(() => this.initGridHeight = this.gridHeight)
         .onActionUpdate((event: GestureEvent) => {
           let tmpHeight: number = event.scale * this.initGridHeight;
           if (tmpHeight > this.gridMinHeight && tmpHeight < 2600)
-            this.maxLinesH = Math.max(1, ((this.gridHeight = tmpHeight) / 13 - classAndTeacher) / font13fpHeight);
+            this.maxLinesH = Math.max(1, ((this.gridHeight = tmpHeight) / periodCount() - classAndTeacher) / font13fpHeight);
         })
         .onActionEnd(() => UnifiedPreferences.putSync('GridHeight', this.gridHeight))
       )
@@ -1224,9 +1258,9 @@ struct Schedule {
     })
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;
-      this.initSchedule(); // 在onShown中刷新显示
     })
     .onShown(() => {
+      this.initSchedule();
       this.refreshGrid();
       setTimeout(() => this.showXiuHint = UnifiedPreferences.getBoolSync('ShowPinchHint', true), 0);
     });
@@ -1289,7 +1323,7 @@ struct Schedule {
                 }
               })
             })
-          Text($r('app.string.local_schedule_daily_nic'))
+          Text(getCampusProfile()?.summerPeriodsText !== undefined ? '时间轴按本周一；当天时间见课程详情' : $r('app.string.local_schedule_daily_nic'))
             .fontSize(12)
             .fontColor($r('app.color.transparent_text'))
             .width('100%')
@@ -1361,7 +1395,12 @@ struct Schedule {
         }
         .width(40)
         .height(40)
-        .bindMenu(this.editMenu());
+        .bindMenu(this.editMenu())
+        .bindSheet($$this.showImportPreview, this.ImportPreview(), {
+          detents: [SheetSize.LARGE],
+          showClose: true,
+          onDisappear: () => { this.pendingImport = null; this.importPreview = []; }
+        });
       }
       .padding({ left: 12, right: 12, top: 3 })
       .width('100%')
@@ -1370,7 +1409,7 @@ struct Schedule {
        * 周数信息与翻页
        */
       Row() { // 高度30
-        Text(new Date(this.weekStart).toLocaleString('zh-cn', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ~ ' + new Date(this.weekStart + 518400000).toLocaleString('zh-cn', { year: 'numeric', month: '2-digit', day: '2-digit' }))
+        Text(new Date(this.weekStart).toLocaleString('zh-cn', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' }) + ' ~ ' + new Date(this.weekStart + 518400000).toLocaleString('zh-cn', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' }))
           .id('week_of_term_span')
           .fontWeight(FontWeight.Bold)
           .fontSize(14)
@@ -1387,15 +1426,14 @@ struct Schedule {
           .onClick(() => {
             let totalWeekNum = this.semesters[this.displayTerm].totalWeekNum;
             if (totalWeekNum === 0)
-              totalWeekNum = 20;
+              totalWeekNum = 30;
             CalendarPickerDialog.show({
               selected: new Date(this.weekStart),
               start: new Date(this.semesters[this.displayTerm].beginTime),
               end: new Date(this.semesters[this.displayTerm].beginTime + totalWeekNum * millisecondsPerWeek - 86400000),
               onAccept: (value: Date) => {
-                value.setDate(value.getDate() - value.getDay());
-                value.setHours(0, 0, 0, 0);
-                this.weekStart = value.getTime();
+                value = new Date(mondayStart(value.getTime()));
+                this.weekStart = mondayStart(value.getTime());
                 this.weekDisplayed = (this.weekStart - this.semesters[this.displayTerm].beginTime) / millisecondsPerWeek + 1;
                 this.refreshGrid();
               }
@@ -1423,7 +1461,7 @@ struct Schedule {
           .fontSize(14)
           .onClick(() => {
             this.getUIContext().showTextPickerDialog({
-              range: (tools.getContArray([[1, 20]], true) as string[]).map(count => `第 ${count} 周`),
+              range: (tools.getContArray([[1, this.semesters[this.displayTerm].totalWeekNum || 30]], true) as string[]).map(count => `第 ${count} 周`),
               selected: this.weekDisplayed - 1,
               canLoop: false,
               onAccept: (value: TextPickerResult) => {
@@ -1440,9 +1478,9 @@ struct Schedule {
           .padding({ left: 20, right: 20 })
           .objectFit(ImageFit.Contain)
           .draggable(false)
-          .opacity(this.weekDisplayed < 20 ? 1 : 0.4)
+          .opacity(this.weekDisplayed < (this.semesters[this.displayTerm].totalWeekNum || 30) ? 1 : 0.4)
           .onClick(() => {
-            if (this.weekDisplayed < 20) {
+            if (this.weekDisplayed < (this.semesters[this.displayTerm].totalWeekNum || 30)) {
               this.weekDisplayed++;
               this.weekStart += millisecondsPerWeek;
               this.refreshGrid();
@@ -1486,13 +1524,13 @@ struct Schedule {
               this.refreshGrid();
             }
           })
-        Text(tools.weekTranslate[0])
+        Text(tools.weekTranslate[1])
           .fontWeight(FontWeight.Bold)
           .fontSize(12)
           .textAlign(TextAlign.Center)
           .height('100%')
           .layoutWeight(1)
-        ForEach(tools.getContArray([[1, 6]]), (item: number) => {
+        ForEach([2, 3, 4, 5, 6, 0], (item: number) => {
           Text(tools.weekTranslate[item])
             .fontWeight(FontWeight.Bold)
             .fontSize(12)
@@ -1567,6 +1605,7 @@ struct Schedule {
               this.rectifyTimeSpan[1] = swapTemp;
             }
             this.classInfo.timeSpan = tools.getContArray([this.rectifyTimeSpan]) as number[];
+            if (!this.validateDraft()) return;
             ScheduleManager.addClassToSemester(this.displayTerm, this.classInfo, this.changeAllColor);
             this.refreshGrid();
             this.showSheet = false;
@@ -1622,6 +1661,7 @@ struct Schedule {
             this.rectifyTimeSpan[1] = swapTemp;
           }
           this.classInfo.timeSpan = tools.getContArray([this.rectifyTimeSpan]) as number[];
+          if (!this.validateDraft()) return;
           if (this.isChangeSchedule) {
             if (!areClassAttributesEqual(this.oriClassInfo, this.classInfo)) {
               ScheduleManager.deleteClassFromSemester(this.displayTerm, this.oriClassInfo);
@@ -1689,17 +1729,18 @@ struct Schedule {
           }
           .margin({ bottom: 5 });
 
+          Text(`本周当天 ${periodsForDate(this.weekStart + mondayOffset(this.classInfo.dayOfWeek) * 86400000)[this.rectifyTimeSpan[0]]?.[0] || '--:--'}–${periodsForDate(this.weekStart + mondayOffset(this.classInfo.dayOfWeek) * 86400000)[this.rectifyTimeSpan[1]]?.[1] || '--:--'}（跨季按当天作息）`).fontSize(12)
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
             Row() {
               Text($r('app.string.class_detail_time'))
                 .textAlign(TextAlign.Start);
-              Select(this.createArray(1, 13))
+              Select(this.createArray(1, periodCount()))
                 .value(this.rectifyTimeSpan[0].toString())
                 .onSelect((index: number) => {
                   this.rectifyTimeSpan[0] = index + 1;
                 });
               Text(' ~ ');
-              Select(this.createArray(1, 13))
+              Select(this.createArray(1, periodCount()))
                 .value(this.rectifyTimeSpan[1].toString())
                 .onSelect((index: number) => {
                   this.rectifyTimeSpan[1] = index + 1;
@@ -1751,12 +1792,13 @@ struct Schedule {
                 })
                 .width('100%')
                 .selectAll(true);
-              Circle()
-                .fill(this.isColorLegal ? this.classColor : '#0000')
+              Row()
+                .backgroundColor(this.isColorLegal ? this.classColor : '#0000')
                 .width(32)
                 .height(32)
+                .borderRadius(16)
                 .offset({ x: -4 })
-                .stroke(this.isColorLegal ? $r('app.color.grid_border') : $r('app.color.red'))
+                .border({ width: 1, color: this.isColorLegal ? $r('app.color.grid_border') : $r('app.color.red') })
                 .bindPopup(this.showColorHint, {
                   builder: this.colorHintPopup(),
                   placement: Placement.Left,
@@ -1830,7 +1872,7 @@ struct Schedule {
               .onChange((itemName: CheckboxGroupResult) => {
                 let selectAny: boolean = false;
                 this.weekOfTerm = [];
-                for (let weekRepeat = 1; weekRepeat <= 20; weekRepeat++) {
+                for (let weekRepeat = 1; weekRepeat <= 30; weekRepeat++) {
                   if (this.rectifyWeekOfTerm[weekRepeat]) {
                     this.weekOfTerm.push(weekRepeat);
                     selectAny = true;
@@ -1842,8 +1884,25 @@ struct Schedule {
           }
           .width('100%');
 
+          Text('单双周按教学周序号计算；请按学校课表核对，不按公历周数。').fontSize(12)
+          Row({ space: 8 }) {
+            TextInput({ text: this.weekExpression, placeholder: '周次表达式，例如 1-16(单),18' })
+              .layoutWeight(1)
+              .onChange((value: string) => { this.weekExpression = value; })
+            Button('应用').onClick(() => {
+              try {
+                const weeks: number[] = expandWeeks(this.weekExpression);
+                this.rectifyWeekOfTerm = Array(31).fill(false);
+                for (const week of weeks) this.rectifyWeekOfTerm[week] = true;
+                this.weekOfTerm = weeks;
+                this.isWeeksLegal = true;
+              } catch (error) {
+                this.getUIContext().getPromptAction().showToast({ message: (error as Error).message });
+              }
+            })
+          }
           Flex({ wrap: FlexWrap.Wrap, alignContent: FlexAlign.SpaceAround }) {
-            ForEach(tools.getContArray([[1, 20]]), (checkboxId: number) => {
+            ForEach(tools.getContArray([[1, 30]]), (checkboxId: number) => {
               Row() {
                 Checkbox({ name: checkboxId.toString(), group: `checkboxGroup${this.checkBoxGroup}` })
                   .shape(CheckBoxShape.ROUNDED_SQUARE)

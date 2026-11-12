@@ -1,4 +1,15 @@
 import * as ExamStorage from './ExamStorage';
+import { examTimestamps } from './CampusTime';
+
+function normalizedExam(exam: ExamStorage.examAttribute): ExamStorage.examAttribute {
+  if (typeof exam.name !== 'string' || !exam.name.trim()) throw new Error('请填写考试名称');
+  const copy = JSON.parse(JSON.stringify(exam)) as ExamStorage.examAttribute;
+  const times = examTimestamps(copy.date);
+  copy.beginTimeStamp = times[0];
+  copy.endTimeStamp = times[1];
+  if (copy.importance === undefined) copy.importance = 5;
+  return copy;
+}
 
 export function areExamAttributesEqual(a: ExamStorage.examAttribute, b: ExamStorage.examAttribute): boolean {
   // 基本类型直接比较
@@ -19,16 +30,23 @@ class examManager {
   allExamInfo: ExamStorage.examAttribute[] = [];
 
   readStoredExam() {
-    this.allExamInfo = ExamStorage.getExams();
+    this.allExamInfo = ExamStorage.getExams().map((exam: ExamStorage.examAttribute): ExamStorage.examAttribute => {
+      try { return normalizedExam(exam); } catch (_) {
+        // Keep malformed legacy entries editable, but never schedule them as valid exams.
+        const copy = JSON.parse(JSON.stringify(exam)) as ExamStorage.examAttribute;
+        copy.beginTimeStamp = 0;
+        copy.endTimeStamp = 0;
+        return copy;
+      }
+    });
   }
 
   storeExam(data: ExamStorage.examAttribute[]) {
-    for (let i = 0; i < data.length; i++) {
-      data[i].beginTimeStamp = new Date(data[i].date.slice(0, 16)).getTime();
-      data[i].endTimeStamp = new Date(data[i].date.slice(0, 11) + data[i].date.slice(17, 22)).getTime();
-      if (data[i].importance == undefined)
-        data[i].importance = 5;
-    }
+    const normalized = data.map(normalizedExam);
+    this.persist(normalized);
+  }
+
+  private persist(data: ExamStorage.examAttribute[]): void {
     data.sort((a, b) => {
       if (a.importance !== b.importance) {
         return b.importance - a.importance;
@@ -36,28 +54,30 @@ class examManager {
       return a.beginTimeStamp - b.beginTimeStamp;
     });
     ExamStorage.setExams(data);
+    this.allExamInfo = data;
   }
 
   addExam(newExam: ExamStorage.examAttribute) {
-    newExam.beginTimeStamp = new Date(newExam.date.slice(0, 16)).getTime();
-    newExam.endTimeStamp = new Date(newExam.date.slice(0, 11) + newExam.date.slice(17, 22)).getTime();
-    this.allExamInfo.push(newExam);
-    this.allExamInfo.sort((a, b) => {
-      if (a.importance !== b.importance) {
-        return b.importance - a.importance;
-      }
-      return a.beginTimeStamp - b.beginTimeStamp;
-    });
-    ExamStorage.setExams(this.allExamInfo);
+    this.persist(this.allExamInfo.concat([normalizedExam(newExam)]));
+  }
+
+  replaceExam(oldExam: ExamStorage.examAttribute, newExam: ExamStorage.examAttribute): void {
+    const replacement = normalizedExam(newExam);
+    const index = this.allExamInfo.findIndex((exam: ExamStorage.examAttribute) => areExamAttributesEqual(exam, oldExam));
+    if (index < 0) throw new Error('原考试不存在，请刷新后重试');
+    const next = this.allExamInfo.slice();
+    next[index] = replacement;
+    this.persist(next);
   }
 
   deleteExam(deletedExam: ExamStorage.examAttribute) {
-    for (let i = this.allExamInfo.length - 1; i >= 0; i--)
-      if (areExamAttributesEqual(deletedExam, this.allExamInfo[i])) {
-        this.allExamInfo.splice(i, 1);
+    const next = this.allExamInfo.slice();
+    for (let i = next.length - 1; i >= 0; i--)
+      if (areExamAttributesEqual(deletedExam, next[i])) {
+        next.splice(i, 1);
         break;
       }
-    this.storeExam(this.allExamInfo);
+    this.persist(next);
   }
 }
 

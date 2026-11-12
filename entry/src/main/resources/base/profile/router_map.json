@@ -79,6 +79,16 @@
       "name": "GetHomework",
       "pageSourceFile": "src/main/ets/pages/GetHomework.ets",
       "buildFunction": "GHWBuilder"
+    },
+    {
+      "name": "CampusSetup",
+      "pageSourceFile": "src/main/ets/pages/CampusSetup.ets",
+      "buildFunction": "CampusSetupBuilder"
+    },
+    {
+      "name": "LearningRemoved",
+      "pageSourceFile": "src/main/ets/pages/LearningRemoved.ets",
+      "buildFunction": "LearningRemovedBuilder"
     }
   ]
 }

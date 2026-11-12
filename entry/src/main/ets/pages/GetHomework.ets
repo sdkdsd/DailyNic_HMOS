@@ -1,344 +1,140 @@
 import { webview } from '@kit.ArkWeb';
-import BackgroundImage from '../utils/BgImageManager';
-import PasswordDialog from '../view/PasswordDialog';
-import accountInfoProvider from '../utils/Encryption';
-import { fillInformationJS } from '../utils/tools';
-import UnifiedPreferences, { PASSWORD_KEY, REMIND_KEY, UID_KEY } from '../utils/UnifyPreference';
-import { ExceptionPrompt, MarginType } from '@kit.ArkUI';
-import { addItem, TodoItem, TodoType, SubmitChannel, DEFAULT_PRIORITY } from '../utils/TodoStorage';
-
-/**
- * BB 作业上传页面提取出的作业信息，导入时由本页直接组装为待办写入 TodoStorage。
- */
-export interface BBHomeworkInfo {
-  /** 作业标题（已去掉“上载作业：”前缀） */
-  title: string,
-  /** 课程名（取自面包屑），未取到时为空串 */
-  course: string,
-  /** 作业说明文本，未取到时为空串 */
-  description: string,
-  /** 截止时间（毫秒时间戳），页面未提供时为 null */
-  ddl: number | null
-}
-
-/**
- * 在 BB 作业上传页提取作业信息：该页以 id 为 uploadAssignmentFormId 的上传表单
- * 为标志，标题、课程与说明均来自服务端渲染的固定结构（参考 homework.html）。
- * 非上传页面返回 null。
- */
-const homeworkQueryJS = `
-(() => {
-    const form = document.getElementById('uploadAssignmentFormId');
-    if (!form) { return null; }
-    let title = '';
-    const titleEl = document.getElementById('pageTitleText');
-    if (titleEl) {
-        title = titleEl.innerText.replace(/^\\s*上载作业\\s*[：:]\\s*/, '').trim();
-    }
-    let course = '';
-    const courseEl = document.querySelector('#breadcrumbs li.coursePath a');
-    if (courseEl) { course = courseEl.innerText.trim(); }
-    let description = '';
-    const descEl = document.querySelector('#instructions .vtbegenerated');
-    if (descEl) { description = descEl.innerText.trim(); }
-    let ddl = null;
-    const sections = document.querySelectorAll('.metaSection');
-    for (let i = 0; i < sections.length; i++) {
-        const label = sections[i].querySelector('.metaLabel');
-        const field = sections[i].querySelector('.metaField');
-        if (label === null || field === null || label.innerText.indexOf('截止') < 0) { continue; }
-        const text = field.innerText;
-        const dm = text.match(/(\\d{4})[年\\-\\/.](\\d{1,2})[月\\-\\/.](\\d{1,2})/);
-        if (dm) {
-            let hour = 23;
-            let minute = 59;
-            const tm = text.match(/(\\d{1,2}):(\\d{2})/);
-            if (tm) {
-                hour = Number(tm[1]);
-                minute = Number(tm[2]);
-                // 十二小时制标记：中文“下午5:00”在时间前，英文“5:00 PM”在时间后
-                const isPm = /[下晚][\\s\\u00a0]*午|[Pp]\\s*\\.?\\s*[Mm]/.test(text);
-                const isAm = /[上早凌][\\s\\u00a0]*[午晨]|[Aa]\\s*\\.?\\s*[Mm]/.test(text);
-                if (isPm && hour < 12) { hour += 12; }
-                else if (isAm && hour === 12) { hour = 0; }
-            }
-            ddl = new Date(Number(dm[1]), Number(dm[2]) - 1, Number(dm[3]), hour, minute).getTime();
-        }
-        break;
-    }
-    return JSON.stringify({ title: title, course: course, description: description, ddl: ddl });
-})()
-`
+import { LearningPage, LearningTask, LEARNING_HOMEWORK_URL, LEARNING_EXAM_URL,
+  learningNavigationAllowed, learningTime, learningReadTime, learningTaskDisposition } from '../utils/LearningTasks';
+import { LEARNING_READ_SCRIPT } from '../utils/LearningScript';
+import { LearningPreview, prepareLearningUpdate, confirmLearningUpdate } from '../utils/LearningStorage';
 
 @Builder
-export function GHWBuilder(name: string) {
-  HomeworkImportPage();
-}
+export function GHWBuilder(name: string, param?: Object) { LearningPageView(); }
 
-@Entry
 @Component
-struct HomeworkImportPage {
-  webviewController: webview.WebviewController = new webview.WebviewController();
-  pathStack: NavPathStack = new NavPathStack();
-  webAutoDarkMode: boolean = UnifiedPreferences.getBoolSync('webAutoDarkMode', true);
-  haveTriedLogin: boolean = false;
-  dialogController: CustomDialogController = new CustomDialogController({
-    builder: PasswordDialog({
-      isFromSetting: false,
-      onConfirm: () => {
-        this.haveTriedLogin = true;
-        this.webviewController.runJavaScript(fillInformationJS);
-      }
-    }),
-    autoCancel: false
-  })
-  @State loadingProgress: number = 0;
-  @State loadError: string = '';
-  @State showGetHint: boolean = true;
+struct LearningPageView {
+  private controller: webview.WebviewController = new webview.WebviewController();
+  private revision: number = 0;
+  private pageLoadedAt: number = 0;
+  private webFailed: boolean = false;
+  private pending: LearningPreview | null = null;
+  @State busy: boolean = false;
+  @State previewOpen: boolean = false;
+  @State rows: LearningTask[] = [];
+  @State status: string = '请在官方页面亲自登录，再打开作业或考试列表读取。';
+  @State webStatus: string = '正在连接学习通…';
+  @State count: number = 0;
+  @State activeCount: number = 0;
 
-  /** 执行页面脚本提取作业信息，直接写入待办存储；页面停留以便连续导入多个作业 */
-  importHomework(): void {
-    this.webviewController.runJavaScript(homeworkQueryJS, (error, result) => {
-      if (error) {
-        this.getUIContext().getPromptAction().showToast({ message: $r('app.string.import_failed'), duration: 2000 });
-        return;
-      }
-      let info: BBHomeworkInfo | null = null;
-      try {
-        info = JSON.parse(result) as BBHomeworkInfo;
-      } catch (e) {
-        console.error('GetHomework: parse failed:', JSON.stringify(e));
-        info = null;
-      }
-      if (info === null || info.title === undefined) {
-        // runJavaScript 对字符串结果可能再包一层 JSON 引号，尝试二次解析
-        try {
-          info = JSON.parse((JSON.parse(result) as object).toString()) as BBHomeworkInfo;
-        } catch (e) {
-          info = null;
-        }
-      }
-      if (info === null || info.title === undefined || info.title.trim() === '') {
-        this.getUIContext().getPromptAction().showToast(
-          { message: '请先进入作业的「上载作业」页面再导入', duration: 2500 });
-        return;
-      }
-      const item: TodoItem = {
-        type: TodoType.Assignment,
-        text: info.title,
-        done: false,
-        submitted: false,
-        channels: [SubmitChannel.Blackboard],
-        priority: DEFAULT_PRIORITY
-      };
-      if (info.course !== undefined && info.course !== '') {
-        item.course = info.course;
-      }
-      if (info.description !== undefined && info.description !== '') {
-        item.description = info.description;
-      }
-      if (info.ddl !== null && info.ddl !== undefined) {
-        item.ddl = info.ddl;
-      }
-      addItem(item);
-      this.getUIContext().getPromptAction().showToast({ message: $r('app.string.import_success') });
-    })
+  private openList(url: string): void {
+    this.pending = null; this.previewOpen = false; this.pageLoadedAt = 0; this.webFailed = false; this.webStatus = '正在加载…';
+    try { this.controller.loadUrl(url); } catch (_) { this.webStatus = '网页尚未准备好，请稍后重试。'; }
   }
-
-  @Builder customTitle() {
-    Row({ space: 6 }) {
-      Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
-        Image($r('app.media.close'))
-          .height(22)
-          .draggable(false)
+  private async readList(): Promise<void> {
+    if (this.busy) return;
+    this.busy = true; this.pending = null;
+    const revision = this.revision;
+    let failure = '列表格式或状态尚未识别，未保存。';
+    try {
+      const capturedAt = learningReadTime(this.pageLoadedAt, Date.now());
+      const raw = await this.controller.runJavaScript(LEARNING_READ_SCRIPT);
+      if (revision !== this.revision || raw.length > 1000000) throw new Error('page');
+      const decoded: Object = JSON.parse(raw) as Object;
+      const page = (typeof decoded === 'string' ? JSON.parse(decoded as string) : decoded) as LearningPage;
+      if (page.readError) {
+        failure = page.readError === 'origin' || page.readError === 'path' ? '请完成登录，再点上方“作业”或“考试”打开列表。' :
+          page.readError === 'empty' ? '没有读到可识别条目；可能列表为空或尚未加载。旧事项保留。' :
+            page.readError === 'loading' ? '列表尚未加载完成，请稍后读取。' : '列表结构尚未识别，请反馈此提示。';
+        throw new Error('page');
       }
-      .height(40)
-      .width(40)
-      .onClick(() => {
-        this.webviewController.terminateRenderProcess();
-        this.pathStack.pop();
-      })
-
-      Text('导入作业')
-        .fontSize(20)
-        .fontWeight(FontWeight.Bold)
-        .layoutWeight(1)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-      Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
-        Image($r('app.media.back'))
-          .height(22)
-          .draggable(false)
-      }
-      .height(40)
-      .width(40)
-      .onClick(() => {
-        if (this.webviewController.accessBackward()) {
-          this.webviewController.backward();
-        } else {
-          this.getUIContext().getPromptAction().showToast(
-            { message: $r('app.string.already_first_page'), duration: 500 });
-        }
-      })
-
-      Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
-        Image($r('app.media.refresh'))
-          .height(22)
-          .draggable(false)
-      }
-      .height(40)
-      .width(40)
-      .onClick(() => this.webviewController.refresh())
-
-      Button({ type: ButtonType.Circle, buttonStyle: ButtonStyleMode.NORMAL }) {
-        Image($r('app.media.get'))
-          .height(22)
-          .draggable(false)
-      }
-      .height(40)
-      .width(40)
-      .onClick(() => this.importHomework())
+      this.pending = prepareLearningUpdate(page, capturedAt);
+      this.rows = this.pending.snapshot.tasks.filter((t: LearningTask) => t.observedAt === capturedAt && t.kind === page.kind);
+      this.rows.sort((a: LearningTask, b: LearningTask) => Number(b.active) - Number(a.active) ||
+        (a.dueAt || Number.MAX_SAFE_INTEGER) - (b.dueAt || Number.MAX_SAFE_INTEGER));
+      this.count = this.pending.count;
+      this.activeCount = this.rows.filter((t: LearningTask) => learningTaskDisposition(t, capturedAt) === 'pending').length;
+      this.previewOpen = true;
+    } catch (error) {
+      this.pending = null;
+      const code = (error as Error).message;
+      if (code === 'stalePage') failure = '请点“作业”或“考试”刷新页面后读取；无需退出登录。';
+      else if (code === 'deadline') failure = '列表的剩余时间格式尚未识别，请反馈此提示。';
+      else if (code === 'status') failure = '列表出现未识别的任务状态，请反馈此提示。';
+      else if (code === 'row') failure = '列表条目的名称或标识不完整，请反馈此提示。';
+      else if (code === 'duplicate') failure = '列表有重复标识，请刷新官方页面后重试。';
+      else if (code === 'cache' || code === 'storage') failure = '本地学习通缓存异常，请反馈此提示。';
+      this.status = `${failure} 已有数据未改动。`;
     }
-    .padding({ left: 12, right: 12 })
-    .alignItems(VerticalAlign.Center)
-    .height(56)
-    .width('100%')
+    finally { this.busy = false; }
   }
-
+  @Builder Preview() {
+    Column({ space: 12 }) {
+      Text(`核对${this.count}条记录 · ${this.activeCount}条待办`).fontSize(20).fontWeight(FontWeight.Bold)
+      Text('已结束或到期事项退出待办；期限不明的收进“待核实”。仅更新本页记录，未读到的旧记录保留。').fontSize(13)
+      Scroll() {
+        Column({ space: 12 }) {
+          ForEach(this.rows, (task: LearningTask) => {
+            Column({ space: 4 }) {
+              Text(task.title).fontWeight(FontWeight.Bold)
+              Text(`${task.course} · ${task.status}`).fontSize(13)
+              Text(task.dueAt ? `约截止于 ${learningTime(task.dueAt)}（北京时间）` : '页面未提供截止时间').fontSize(13)
+              Text(learningTaskDisposition(task, Date.now()) === 'pending' ? '显示在待办' :
+                learningTaskDisposition(task, Date.now()) === 'uncertain' ? '收进待核实，不显示在主待办' : '不再显示在待办').fontSize(12)
+            }.width('100%').alignItems(HorizontalAlign.Start)
+          }, (task: LearningTask) => JSON.stringify(task))
+        }.width('100%')
+      }.layoutWeight(1)
+      Text('截止时间由页面剩余时间估算，请以官方页面为准。请始终同步同一账号。').fontSize(12)
+      Row({ space: 12 }) {
+        Button('取消').onClick(() => { this.pending = null; this.previewOpen = false; })
+        Button('保存更新').onClick(() => {
+          if (!this.pending) return;
+          try {
+            confirmLearningUpdate(this.pending, Date.now());
+            this.pending = null; this.previewOpen = false;
+            this.status = '已更新首页和待办。可继续打开另一类列表读取，以后重新读取即可刷新。';
+          } catch (_) { this.pending = null; this.previewOpen = false; this.status = '未保存：预览已过期、本地数据已变化或存储失败。请重新读取。'; }
+        })
+      }
+    }.padding(16).height('100%')
+  }
   build() {
     NavDestination() {
-      Stack({ alignContent: Alignment.TopStart }) {
-        Web({ src: 'https://www.bb.ustc.edu.cn', controller: this.webviewController })
-          .javaScriptProxy({
-            object: accountInfoProvider,
-            name: "infoProvider",
-            methodList: ["getUID", "getPassword"],
-            controller: this.webviewController,
-            asyncMethodList: []
+      Column({ space: 6 }) {
+        Text(this.status).fontSize(13).width('100%')
+        Row({ space: 8 }) {
+          Button('作业').fontSize(13).enabled(!this.busy).onClick(() => this.openList(LEARNING_HOMEWORK_URL))
+          Button('考试').fontSize(13).enabled(!this.busy).onClick(() => this.openList(LEARNING_EXAM_URL))
+          Button('读取列表').fontSize(13).enabled(!this.busy).onClick(() => { this.readList(); })
+        }
+        Text('登录仅用于本次浏览；退出后可能需要重登。只读取列表，不打开试卷或提交作业。').fontSize(11)
+        Text(this.webStatus).fontSize(12).width('100%')
+        Web({ src: 'https://i.chaoxing.com/', controller: this.controller, incognitoMode: true })
+          .javaScriptAccess(true).domStorageAccess(true).fileAccess(false).mixedMode(MixedMode.None)
+          .onLoadIntercept((event) => {
+            if (!event) return true;
+            const allowed = learningNavigationAllowed(event.data.getRequestUrl());
+            if (!allowed && event.data.isMainFrame()) {
+              this.webFailed = true; this.pageLoadedAt = 0; this.pending = null;
+              this.webStatus = '已停止未支持的网页跳转，请反馈此提示。';
+            }
+            return !allowed;
           })
-          .domStorageAccess(true)
-          .javaScriptAccess(true)
-          .width('100%')
-          .height('100%')
-          .darkMode(this.webAutoDarkMode ? WebDarkMode.Auto : WebDarkMode.Off)
-          .forceDarkAccess(this.webAutoDarkMode)
-          .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
-          .backgroundColor(BackgroundImage.blurLevel === undefined ? undefined : '#0000')
-          .onErrorReceive((event) => {
-            // Only handle loading errors of the main framework to avoid duplicate processing of errors in sub-resources
-            this.loadError = event.error.getErrorInfo();
-          })
-          .onProgressChange((event) => {
-            this.loadingProgress = event.newProgress;
-          })
-          .onPageBegin(() => {
-            this.loadError = '';
-          })
+          .onPageBegin(() => { this.revision++; this.pageLoadedAt = 0; this.webFailed = false; this.pending = null; this.previewOpen = false; })
           .onPageEnd(() => {
-            // 跳转到统一身份认证登录页时自动填充账号密码
-            if (!this.haveTriedLogin && this.webviewController.getUrl().startsWith('https://id.ustc.edu.cn/cas/login')) {
-              if (!(UnifiedPreferences.hasSync(UID_KEY) && UnifiedPreferences.hasSync(PASSWORD_KEY))) {
-                if (UnifiedPreferences.getBoolSync(REMIND_KEY, true)) {
-                  this.dialogController.open();
-                }
-              } else {
-                this.haveTriedLogin = true;
-                this.webviewController.runJavaScript(fillInformationJS, (error, result) => {
-                  console.info(`自动填写uid：${UnifiedPreferences.getSync(UID_KEY)}`);
-                });
-              }
-            }
+            if (!this.webFailed) { this.pageLoadedAt = Date.now(); this.webStatus = '页面已加载，请完成登录或读取列表。'; }
           })
-
-        if (this.loadError !== '') {
-          Column() {
-            Column() {
-              Image($r('app.media.thinking'))
-                .layoutWeight(1)
-                .objectFit(ImageFit.Contain)
-                .constraintSize({ maxWidth: '60%', maxHeight: 300 })
-              Text($r('app.string.network_error'))
-                .fontWeight(FontWeight.Bold)
-                .fontSize(30)
-                .fontColor($r('app.color.red'))
-              Text($r('app.string.network_error_explain', this.loadError))
-                .textAlign(TextAlign.Center)
-                .margin({ top: 6, bottom: 10 })
-                .fontColor(this.webAutoDarkMode ? $r('app.color.normal_text') : '#000000')
-              Row({ space: 6 }) {
-                Button($r('app.string.back_to_last_page'))
-                  .onClick(() => {
-                    if (this.webviewController.accessBackward()) {
-                      this.webviewController.backward();
-                    } else {
-                      this.webviewController.terminateRenderProcess();
-                      this.pathStack.pop();
-                    }
-                  })
-                Button($r('app.string.refresh'))
-                  .onClick(() => {
-                    this.webviewController.refresh();
-                  })
-                Button($r('app.string.close_this_hint'))
-                  .onClick(() => {
-                    this.loadError = '';
-                    this.getUIContext().getPromptAction().showToast({ message: $r('app.string.after_close') });
-                  })
-              }
-            }
-            .padding({ left: 12, right: 12 })
-          }
-          .width('100%')
-          .height('100%')
-          .justifyContent(FlexAlign.Center)
-          .alignItems(HorizontalAlign.Center)
-        }
-
-        ExceptionPrompt({
-          options: {
-            tip: '登录后进入「作业区→上载作业」，在右上角可导入为作业',
-            marginType: MarginType.DEFAULT_MARGIN,
-            marginTop: 7,
-            isShown: this.showGetHint,
-            icon: $r('app.media.lightbulb')
-          },
-          onTipClick: () => this.showGetHint = false
-        })
-
-        Line()
-          .visibility(this.loadingProgress == 100 ? Visibility.None : Visibility.Visible)
-          .width(`${this.loadingProgress}%`)
-          .height(5)
-          .startPoint([0, 0])
-          .backgroundColor($r('app.color.pink'));
-        Row({ space: 5 }) {
-          LoadingProgress()
-            .width(45)
-            .height(45)
-            .color($r('app.color.pink'));
-          Text($r('app.string.loading'))
-            .fontColor($r('app.color.pink'));
-        }
-        .padding({ left: 5, top: 5 })
-        .visibility(this.loadingProgress === 100 ? Visibility.None : Visibility.Visible);
-      }
-      .height('100%')
-      .width('100%')
-      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
-    }
-    .title(this.customTitle(), {
-      backgroundColor: (BackgroundImage.blurLevel === undefined ? BackgroundImage.titleBackgroundColor : '#0000')
-    })
-    .hideBackButton(true)
-    .backgroundColor('#0000')
-    .backgroundBlurStyle(BackgroundImage.blurLevel)
-    .onReady((context: NavDestinationContext) => {
-      this.pathStack = context.pathStack;
-    })
-    .onBackPressed(() => {
-      this.webviewController.terminateRenderProcess();
-      return false;
-    })
+          .onErrorReceive((event) => { if (event?.request.isMainFrame()) {
+            this.webFailed = true; this.pageLoadedAt = 0; this.pending = null;
+            this.webStatus = '网页加载失败，请检查网络后重新打开列表。';
+          } })
+          .onHttpErrorReceive((event) => { if (event?.request.isMainFrame()) {
+            this.webFailed = true; this.pageLoadedAt = 0; this.pending = null;
+            this.webStatus = '服务器未返回列表，请稍后重试。';
+          } })
+          .onSslErrorEventReceive((event) => {
+            event?.handler.handleCancel(); this.webFailed = true; this.pageLoadedAt = 0; this.pending = null;
+            this.webStatus = '证书验证失败，连接已停止。';
+          })
+          .layoutWeight(1).width('100%')
+      }.padding(10).height('100%')
+      .bindSheet($$this.previewOpen, this.Preview(), { height: SheetSize.LARGE, onDisappear: () => { this.pending = null; } })
+    }.title('学习通作业与考试')
   }
 }

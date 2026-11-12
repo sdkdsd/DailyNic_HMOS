@@ -89,16 +89,7 @@
         },
         "reason": "{CheckInternetStatus}"
       },
-      {
-        "name": "ohos.permission.APPROXIMATELY_LOCATION",
-        "usedScene": {
-          "abilities": [
-            "EntryAbility"
-          ],
-          "when": "always"
-        },
-        "reason": "$string:location_permission_reason"
-      },
+
       {
         "name": "ohos.permission.WRITE_CALENDAR",
         "usedScene": {
@@ -118,10 +109,6 @@
           "when": "always"
         },
         "reason": "$string:read_calendar_permission_reason"
-      },
-      {
-        "name": "ohos.permission.ACCESS_BIOMETRIC",
-        "reason": "$string:access_biometric_permission_reason"
       }
     ]
   }

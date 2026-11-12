@@ -18,6 +18,9 @@ function courseBarColor(color: string): string {
 @Entry(localStorage)
 @Component
 struct Class_schedule_dailyCard {
+  @LocalStorageProp('campusConfigured') campusConfigured: boolean = false;
+  @LocalStorageProp('periodTimes') periodTimes: string[][] = [['--:--', '--:--']];
+  @LocalStorageProp('tomorrowPeriodTimes') tomorrowPeriodTimes: string[][] = [['--:--', '--:--']];
   @LocalStorageProp('todayCourse') todayCourse: ScheduleSources.classAttribute[] = [];
   @LocalStorageProp('tomorrowCourse') tomorrowCourse: ScheduleSources.classAttribute[] = [];
   @LocalStorageProp('title') title: ResourceStr = '';
@@ -39,7 +42,7 @@ struct Class_schedule_dailyCard {
 
   // 单条课程：窄列里课程名在上，教师/教室/时间在下，课程色作为左侧色条
   @Builder
-  courseItem(course: ScheduleSources.classAttribute) {
+  courseItem(course: ScheduleSources.classAttribute, times: string[][]) {
     Column() {
       Text() {
         Span(course.name)
@@ -56,7 +59,7 @@ struct Class_schedule_dailyCard {
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .visibility(course.teacher == '' ? Visibility.None : Visibility.Visible)
 
-      Text(`\udb80\udfdc ${ScheduleSources.commonClassTime[course.timeSpan[0]][0]}~${ScheduleSources.commonClassTime[course.timeSpan[course.timeSpan.length - 1]][1]}`)
+      Text(`\udb80\udfdc ${(times[course.timeSpan[0]] || ['--:--'])[0]}~${(times[course.timeSpan[course.timeSpan.length - 1]] || ['', '--:--'])[1]}`)
         .fontSize(11)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -87,7 +90,7 @@ struct Class_schedule_dailyCard {
             .height(40)
             .interpolation(ImageInterpolation.Medium)
             .opacity(0.9)
-          Text($r('app.string.no_class_today'))
+          Text(this.campusConfigured ? $r('app.string.no_class_today') : '请先在应用核对校历作息')
             .fontSize(11)
             .textAlign(TextAlign.Center)
             .opacity(0.7)
@@ -98,7 +101,7 @@ struct Class_schedule_dailyCard {
         .margin({ top: 12 })
       } else {
         ForEach(this.todayCourse, (course: ScheduleSources.classAttribute) => {
-          this.courseItem(course)
+          this.courseItem(course, this.periodTimes)
         })
       }
     }
@@ -117,7 +120,7 @@ struct Class_schedule_dailyCard {
         // .margin({ bottom: 4 })
 
       ForEach(this.tomorrowCourse, (course: ScheduleSources.classAttribute) => {
-        this.courseItem(course)
+        this.courseItem(course, this.tomorrowPeriodTimes)
       })
     }
     .layoutWeight(1)

@@ -1,7 +1,7 @@
 {
   "name": "entry",
   "version": "2.2.3",
-  "description": "Entry of com.nic.dailynic",
+  "description": "SUST personal fork of DailyNic (GPL-3.0-or-later)",
   "main": "",
   "author": "",
   "homepage": "https://github.com/Your-USTC/DailyNic_HMOS",

@@ -22,7 +22,7 @@ struct AddCard {
   @Builder CardMenu(cardType: number, bindComponent: string, formName: string) {
     Menu() {
       AddFormMenuItem({
-        bundleName: 'com.nic.dailynic',
+        bundleName: 'com.sdkdsd.dailynic.sust',
         abilityName: 'EntryFormAbility',
         parameters: {
           'ohos.extra.param.key.form_dimension': 3, // 卡片尺寸，1代表1*2卡片，2代表2*2卡片，3代表2*4卡片，4代表4*4卡片，7代表6*4卡片

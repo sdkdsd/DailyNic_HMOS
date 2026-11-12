@@ -1,3 +1,5 @@
+import { classTimes, classStamps, periodCount, campusReady, getCampusProfile } from '../utils/CampusConfig';
+import { mondayStart, parsePeriods } from '../utils/CampusTime';
 
 import UnifiedPreferences from '../utils/UnifyPreference';
 
@@ -19,17 +21,22 @@ export interface semesterAttribute {
   createTime: number, // 课表创建时间戳，用于读取不同课表
   source: string, // 最后一次编辑来源
   beginTime: number, // 学期开始时间戳
-  totalWeekNum: number // 课程最大周数
+  totalWeekNum: number, // 校历周数和课程最大周数中的较大值
+  calendarWeekCount?: number // 明确应用的校历周数；旧版数据可缺省
+  onlineTerm?: string // Only dedicated online semesters are refreshed
 }
 
 export interface exportSemester {
   attribute: semesterAttribute,
   courses: classAttribute[]
+  onlineCourses?: classAttribute[] // Last school snapshot protects subsequent local edits
 };
 
 export interface exportedData {
   exportTime: number,
   scheduleVersion: string,
+  periods: string[][],
+  summerPeriods?: string[][],
   defaultSemester: number,
   semesters: exportSemester[]
 };
@@ -62,21 +69,9 @@ export function setExamRemindBefore(minute: number) {
   UnifiedPreferences.putSync('examRemindBefore', minute);
 }
 
-// 第几节课 -> 上课时间
-export const commonClassTime: string[][] = [
-  ['07:21', '11:45'],    // 排除[0]
-  ['07:50', '08:35'], ['08:40', '09:25'], ['09:45', '10:30'], ['10:35', '11:20'], ['11:25', '12:10'],    // 上午
-  ['14:00', '14:45'], ['14:50', '15:35'], ['15:55', '16:40'], ['16:45', '17:30'], ['17:35', '18:20'],    // 下午
-  ['19:30', '20:15'], ['20:20', '21:05'], ['21:10', '21:55']    // 晚上
-];
-
-export const commonClassStamp: number[][]= [
-  [26460000, 42300000],
-  [28200000, 30900000], [31200000, 33900000], [35100000, 37800000], [38100000, 40800000], [41000000, 43800000],
-  [50400000, 53100000], [53400000, 56100000], [57300000, 60000000], [60300000, 63000000], [63300000, 66000000],
-  [70200000, 72900000], [73200000, 75900000], [76200000, 78900000]
-];
-
+// User-confirmed campus times, never USTC defaults.
+export const commonClassTime: string[][] = classTimes;
+export const commonClassStamp: number[][] = classStamps;
 
 /**
  * 校验 JSON.parse 解析后的对象是否符合 exportedData 接口规范
@@ -91,6 +86,12 @@ export function validateExportedData(data: object): string {
 
   // 类型断言为显式定义的类型（仅用于 TS 编译，运行时靠原生判断）
   const exportedData = data as exportedData;
+  if (!campusReady()) return '请先核对并配置西安校区作息';
+  const campusProfile = getCampusProfile()!;
+  const seasonal = campusProfile.summerPeriodsText !== undefined;
+  if (exportedData.scheduleVersion !== (seasonal ? 'sust-xian-2-seasonal' : 'sust-xian-1')) return '备份作息模式或版本不一致，请先核对夏冬季配置；不直接导入旧学校备份';
+  if (JSON.stringify(exportedData.periods) !== JSON.stringify(parsePeriods(campusProfile.periodsText))) return '备份作息与当前配置不同，请先核对课时后再导入';
+  if (seasonal && JSON.stringify(exportedData.summerPeriods) !== JSON.stringify(parsePeriods(campusProfile.summerPeriodsText!))) return '备份夏季作息与当前配置不同';
 
   // ------------------------------
   // 校验顶层字段（typeof 判断）
@@ -98,7 +99,7 @@ export function validateExportedData(data: object): string {
   // 1. exportTime
   if (exportedData.exportTime === undefined || exportedData.exportTime === null) {
     return 'exportedData 缺少必填字段: exportTime';
-  } else if (typeof exportedData.exportTime !== 'number') {
+  } else if (!Number.isFinite(exportedData.exportTime)) {
     return 'exportedData.exportTime 必须是 number 类型';
   } else if (exportedData.exportTime <= 0) {
     return 'exportedData.exportTime 必须是有效的时间戳（正数）';
@@ -114,7 +115,7 @@ export function validateExportedData(data: object): string {
   // 3. defaultSemester
   if (exportedData.defaultSemester === undefined || exportedData.defaultSemester === null) {
     return 'exportedData 缺少必填字段: defaultSemester';
-  } else if (typeof exportedData.defaultSemester !== 'number') {
+  } else if (!Number.isInteger(exportedData.defaultSemester)) {
     return 'exportedData.defaultSemester 必须是 number 类型';
   } else if (exportedData.defaultSemester < 0) {
     return 'exportedData.defaultSemester 必须是非负整数';
@@ -127,6 +128,8 @@ export function validateExportedData(data: object): string {
     return 'exportedData.semesters 必须是数组类型';
   }
 
+  if (exportedData.defaultSemester >= exportedData.semesters.length) return '默认学期越界或备份无学期';
+  const seenTimes: number[] = [];
   if (Array.isArray(exportedData.semesters)) {
     // 显式指定 semester: exportSemester, semesterIndex: number
     for (let semesterIndex = 0; semesterIndex < exportedData.semesters.length; semesterIndex++) {
@@ -191,12 +194,17 @@ export function validateExportedData(data: object): string {
           return `${attributePath}.beginTime 必须是有效的时间戳`;
         }
 
+        if (!Number.isFinite(attribute.beginTime) || attribute.beginTime !== mondayStart(attribute.beginTime)) return '学期须从北京时间周一零点开始';
+        if (!Number.isFinite(attribute.createTime) || seenTimes.includes(attribute.createTime)) return '学期标识无效或重复';
+        seenTimes.push(attribute.createTime);
         // 5. totalWeekNum
+        if (attribute.calendarWeekCount !== undefined && (!Number.isInteger(attribute.calendarWeekCount) ||
+          attribute.calendarWeekCount < 1 || attribute.calendarWeekCount > 30 || attribute.totalWeekNum < attribute.calendarWeekCount)) return '校历周数无效';
         if (attribute.totalWeekNum === undefined || attribute.totalWeekNum === null) {
           return `${attributePath} 缺少必填字段: totalWeekNum`;
         } else if (typeof attribute.totalWeekNum !== 'number') {
           return `${attributePath}.totalWeekNum 必须是 number 类型`;
-        } else if (attribute.totalWeekNum < 0 || !Number.isInteger(attribute.totalWeekNum)) {
+        } else if (attribute.totalWeekNum < 0 || attribute.totalWeekNum > 30 || !Number.isInteger(attribute.totalWeekNum)) {
           return `${attributePath}.totalWeekNum 必须是非负整数`;
         }
       }
@@ -244,6 +252,8 @@ export function validateExportedData(data: object): string {
             return `${coursePath}.timeSpan 必须是正整数数组`;
           }
 
+          if (course.timeSpan.length === 0 || course.timeSpan.some((p: number, i: number) => p > periodCount() || (i > 0 && p !== course.timeSpan[i - 1] + 1))) return '节次须为有效的连续递增列表';
+          if (course.weekOfTerm.length === 0 || course.weekOfTerm.some((w: number, i: number) => w > semester.attribute.totalWeekNum || (i > 0 && w <= course.weekOfTerm[i - 1]))) return '周次须为学期范围内的递增列表';
           // 5. dayOfWeek
           if (course.dayOfWeek === undefined || course.dayOfWeek === null) {
             return `${coursePath} 缺少必填字段: dayOfWeek`;
