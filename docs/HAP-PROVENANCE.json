@@ -1,38 +1,45 @@
 {
-  "file": "DailyNic-SUST-2.3.0-sust.2-d997f15-unsigned.hap",
-  "bytes": 14903503,
-  "sha256": "d13b679239f9b9b2223433391a2ef2fad2351fe446964744e89052ca16b83995",
-  "source_commit": "d997f151dbd27b1f4fb7eb78a781404f62833228",
-  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/d997f151dbd27b1f4fb7eb78a781404f62833228",
+  "file": "DailyNic-SUST-2.3.0-sust.3-4205d16-unsigned.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.3-4205d16-unsigned.hap",
+  "bytes": 15004408,
+  "sha256": "07c30b27b068c8d6e6475a955f1af345a59bce7f0e74304b739d06acb04463fa",
+  "source_commit": "4205d16d31b2eb0d15a961af9a13f31d6b52e7ee",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/4205d16d31b2eb0d15a961af9a13f31d6b52e7ee",
   "source_worktree_clean_at_build": true,
   "bundleName": "com.sdkdsd.dailynic.sust",
-  "versionName": "2.3.0-sust.2",
-  "versionCode": 2003002,
-  "compileSdkVersion": "26.0.1.120",
+  "versionName": "2.3.0-sust.3",
+  "versionCode": 2003003,
+  "compileSdkVersion": "26.0.0.105",
   "targetAPIVersion": 60100023,
   "minAPIVersion": 60100023,
-  "apiReleaseType": "Beta1",
-  "build_command": "bash build.sh clean",
+  "apiReleaseType": "Release",
+  "build_command": "./build.ps1 -DevEcoHome <existing DevEco Studio> -Clean",
   "zip_entries": 297,
   "zip_crc": "passed",
   "signature_status": "UNSIGNED; cannot install directly",
   "signature_evidence": "Official hap-sign-tool verify-app: signature not found; No Hap Signing Block before ZIP Central Directory",
   "host_tests": {
-    "passed": 39,
-    "node": "24.22.1",
-    "scope": "logic, storage/API stubs, source constraints; no phone runtime"
+    "node_passed": 48,
+    "python_passed": 12,
+    "node": "24.16.0",
+    "scope": "logic, DOM fixture, storage/API stubs, source constraints; no phone runtime"
   },
   "build_tools": {
     "node": "24.14.1",
-    "hvigor": "6.26.21",
-    "ohpm": "26.0.1.220",
-    "java": "21"
+    "hvigor": "6.26.4",
+    "java": "25.0.2"
   },
+  "browser_evidence": "User logged in on desktop; visible student/class controls and 12-row grids read. Private transcription cross-checked by ArkTS and Python parsers. Not phone WebView acceptance.",
   "phone_installation": "not performed",
   "phone_tests": "not performed",
   "hdc_targets": "[Empty]",
-  "download_url": "https://drive.google.com/file/d/1KTLrw8mYb-sQgncRkOf4rAe11Ky1CekB/view?usp=drivesdk",
-  "download_verification": "Downloaded from Drive again: size, SHA-256 and ZIP CRC match the local build",
-  "sharing": "Owner-only permission returned by Drive; no sharing permissions changed",
-  "preset_scope": "2026-08-31 semester start, 20 weeks; personal winter/summer periods 1-8 only; evening periods 9-11 unresolved; no holiday makeup mapping"
+  "download_url": null,
+  "distribution": "Local artifact only; no binary or private data committed/uploaded. Prior sust.2 Drive URL is historical.",
+  "unimplemented": [
+    "background scheduled sync",
+    "online exams",
+    "direct Excel/PDF import",
+    "holiday makeup mapping",
+    "evening period preset 9-11"
+  ]
 }
