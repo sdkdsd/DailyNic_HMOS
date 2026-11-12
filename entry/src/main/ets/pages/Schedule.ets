@@ -1,5 +1,5 @@
-import { campusReady, periodCount, firstTeachingMonday } from '../utils/CampusConfig';
-import { mondayStart, mondayOffset, chinaWeekday, chinaDayStart, teachingWeek, expandWeeks } from '../utils/CampusTime';
+import { campusReady, periodCount, firstTeachingMonday, getCampusProfile, periodsForDate, stampsForDate } from '../utils/CampusConfig';
+import { mondayStart, mondayOffset, chinaWeekday, chinaDayStart, teachingWeek, expandWeeks, parsePeriods } from '../utils/CampusTime';
 import { CampusSetup } from './CampusSetup';
 
 import { PopoverDialog, Popup } from '@kit.ArkUI';
@@ -437,8 +437,9 @@ struct Schedule {
           const saveTime: number = Math.trunc(Date.now() / 1000);
           let userContent: exportedData = {
             exportTime: saveTime,
-            scheduleVersion: currentScheduleVersion,
-            periods: ScheduleSources.commonClassTime.slice(1),
+            scheduleVersion: getCampusProfile()?.summerPeriodsText !== undefined ? 'sust-xian-2-seasonal' : currentScheduleVersion,
+            periods: parsePeriods(getCampusProfile()!.periodsText),
+            summerPeriods: getCampusProfile()?.summerPeriodsText !== undefined ? parsePeriods(getCampusProfile()!.summerPeriodsText!) : undefined,
             defaultSemester: ScheduleManager.defaultSemester,
             semesters: Array.from(ScheduleManager.semesters, (semester) => {
               return {
@@ -527,7 +528,7 @@ struct Schedule {
                 Text() {
                   Span('\udb80\udfdc ');
                   Span(weekTranslate[lesson.dayOfWeek]);
-                  Span(` ${ScheduleSources.commonClassTime[lesson.timeSpan[0]][0]}-${ScheduleSources.commonClassTime[lesson.timeSpan[lesson.timeSpan.length - 1]][1]}`);
+                  Span(` ${periodsForDate(this.weekStart + mondayOffset(lesson.dayOfWeek) * 86400000)[lesson.timeSpan[0]][0]}-${periodsForDate(this.weekStart + mondayOffset(lesson.dayOfWeek) * 86400000)[lesson.timeSpan[lesson.timeSpan.length - 1]][1]}`);
                 }
                 .maxLines(1)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -916,18 +917,20 @@ struct Schedule {
     const now: Date = new Date();
     const nowStamp: number = now.getTime();
     const dayStamp: number = nowStamp - chinaDayStart(nowStamp);
+    if (!campusReady()) { this.showTimeLine = false; return; }
+    const stamps = stampsForDate(nowStamp);
     if (nowStamp < this.weekStart || nowStamp >= this.weekStart + millisecondsPerWeek
-      || dayStamp < ScheduleSources.commonClassStamp[1][0] || dayStamp >= ScheduleSources.commonClassStamp[periodCount()][1]) {
+      || dayStamp < stamps[1][0] || dayStamp >= stamps[periodCount()][1]) {
       this.showTimeLine = false;
       return;
     }
     let period: number = periodCount();
     let fraction: number = 1;
     for (let i = 1; i <= periodCount(); i++) {
-      if (dayStamp < ScheduleSources.commonClassStamp[i][1]) {
+      if (dayStamp < stamps[i][1]) {
         period = i;
-        fraction = dayStamp < ScheduleSources.commonClassStamp[i][0] ? 0 :
-          (dayStamp - ScheduleSources.commonClassStamp[i][0]) / (ScheduleSources.commonClassStamp[i][1] - ScheduleSources.commonClassStamp[i][0]);
+        fraction = dayStamp < stamps[i][0] ? 0 :
+          (dayStamp - stamps[i][0]) / (stamps[i][1] - stamps[i][0]);
         break;
       }
     }
@@ -965,7 +968,7 @@ struct Schedule {
                 // 按个人核对作息显示节次
                 Column() {
                   Column() {
-                    Text(ScheduleSources.commonClassTime[1][0])
+                    Text(periodsForDate(this.weekStart)[1][0])
                       .fontSize('8fp')
                       .visibility(this.hideTime ? Visibility.None : Visibility.Visible)
 
@@ -974,7 +977,7 @@ struct Schedule {
                       .fontSize(14)
                       .align(Alignment.Center)
 
-                    Text(ScheduleSources.commonClassTime[1][1])
+                    Text(periodsForDate(this.weekStart)[1][1])
                       .fontSize('8fp')
                       .visibility(this.hideTime ? Visibility.None : Visibility.Visible)
                   }
@@ -996,7 +999,7 @@ struct Schedule {
 
                   ForEach(tools.getContArray([[2, periodCount()]]), (item: number) => {
                     Column() {
-                      Text(ScheduleSources.commonClassTime[item][0])
+                      Text(periodsForDate(this.weekStart)[item][0])
                         .fontSize('8fp')
                         .visibility(this.hideTime ? Visibility.None : Visibility.Visible)
 
@@ -1005,7 +1008,7 @@ struct Schedule {
                         .fontSize(14)
                         .align(Alignment.Center)
 
-                      Text(ScheduleSources.commonClassTime[item][1])
+                      Text(periodsForDate(this.weekStart)[item][1])
                         .fontSize('8fp')
                         .visibility(this.hideTime ? Visibility.None : Visibility.Visible)
                     }
@@ -1267,7 +1270,7 @@ struct Schedule {
                 }
               })
             })
-          Text($r('app.string.local_schedule_daily_nic'))
+          Text(getCampusProfile()?.summerPeriodsText !== undefined ? '时间轴按本周一；当天时间见课程详情' : $r('app.string.local_schedule_daily_nic'))
             .fontSize(12)
             .fontColor($r('app.color.transparent_text'))
             .width('100%')
@@ -1400,7 +1403,7 @@ struct Schedule {
           .fontSize(14)
           .onClick(() => {
             this.getUIContext().showTextPickerDialog({
-              range: (tools.getContArray([[1, 30]], true) as string[]).map(count => `第 ${count} 周`),
+              range: (tools.getContArray([[1, this.semesters[this.displayTerm].totalWeekNum || 30]], true) as string[]).map(count => `第 ${count} 周`),
               selected: this.weekDisplayed - 1,
               canLoop: false,
               onAccept: (value: TextPickerResult) => {
@@ -1417,9 +1420,9 @@ struct Schedule {
           .padding({ left: 20, right: 20 })
           .objectFit(ImageFit.Contain)
           .draggable(false)
-          .opacity(this.weekDisplayed < 20 ? 1 : 0.4)
+          .opacity(this.weekDisplayed < (this.semesters[this.displayTerm].totalWeekNum || 30) ? 1 : 0.4)
           .onClick(() => {
-            if (this.weekDisplayed < 20) {
+            if (this.weekDisplayed < (this.semesters[this.displayTerm].totalWeekNum || 30)) {
               this.weekDisplayed++;
               this.weekStart += millisecondsPerWeek;
               this.refreshGrid();
@@ -1668,6 +1671,7 @@ struct Schedule {
           }
           .margin({ bottom: 5 });
 
+          Text(`本周当天 ${periodsForDate(this.weekStart + mondayOffset(this.classInfo.dayOfWeek) * 86400000)[this.rectifyTimeSpan[0]]?.[0] || '--:--'}–${periodsForDate(this.weekStart + mondayOffset(this.classInfo.dayOfWeek) * 86400000)[this.rectifyTimeSpan[1]]?.[1] || '--:--'}（跨季按当天作息）`).fontSize(12)
           Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
             Row() {
               Text($r('app.string.class_detail_time'))

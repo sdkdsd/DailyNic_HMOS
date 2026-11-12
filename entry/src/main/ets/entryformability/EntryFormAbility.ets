@@ -1,4 +1,4 @@
-import { initCampusProfile, campusReady, classTimes } from '../utils/CampusConfig';
+import { initCampusProfile, campusReady, periodsForDate } from '../utils/CampusConfig';
 import { teachingWeek, chinaWeekday } from '../utils/CampusTime';
 
 import { Want } from '@kit.AbilityKit';
@@ -20,7 +20,8 @@ const DOMAIN_NUMBER: number = 0xFF00;
 
 export class FormDataClass {
   campusConfigured: boolean = campusReady();
-  periodTimes: string[][] = classTimes.map((pair: string[]) => pair.slice());
+  periodTimes: string[][] = [['--:--', '--:--']];
+  tomorrowPeriodTimes: string[][] = [['--:--', '--:--']];
   todayCourse: ScheduleSources.classAttribute[] = [];
   tomorrowCourse: ScheduleSources.classAttribute[] = [];
   title: ResourceStr = '';
@@ -32,6 +33,8 @@ export class FormDataClass {
   constructor(refreshType: number, timestamp: number = Date.now()) {
     const currentTime = new Date(timestamp);
     this.currentTime = currentTime.getTime();
+    this.periodTimes = periodsForDate(timestamp);
+    this.tomorrowPeriodTimes = periodsForDate(timestamp + 86400000);
     if (refreshType === 0) { // 0 → 刷新课表
       ScheduleManager.init();
       this.title = $r("app.string.schedule_card_title");

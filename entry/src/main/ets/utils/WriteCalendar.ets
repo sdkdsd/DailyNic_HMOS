@@ -1,4 +1,5 @@
-import { campusReady, classTimes } from './CampusConfig';
+import { campusReady, getCampusProfile } from './CampusConfig';
+import { parsePeriods } from './CampusTime';
 import { calendarManager } from '@kit.CalendarKit';
 import { abilityAccessCtrl, bundleManager } from '@kit.AbilityKit';
 import { CalendarSync } from './CalendarSync';
@@ -92,7 +93,10 @@ class WriteCalendar {
         if (!campusReady()) throw new Error('请先核对西安校区的校历与课时');
         ScheduleManager.init();
         const semester = ScheduleManager.semesters[ScheduleManager.defaultSemester];
-        events = courseEvents(ScheduleStorage.getCourses(semester.createTime), semester, classTimes, minute);
+        const profile = getCampusProfile()!;
+        const winter = [['--:--', '--:--'], ...parsePeriods(profile.periodsText)];
+        const summer = profile.summerPeriodsText !== undefined ? [['--:--', '--:--'], ...parsePeriods(profile.summerPeriodsText)] : undefined;
+        events = courseEvents(ScheduleStorage.getCourses(semester.createTime), semester, winter, minute, summer);
       }
       // Validate the entire input before touching existing reminders.
       await this.writer.replace(this.calendarMgr, isExam ? this.calendarAccount_exam : this.calendarAccount,

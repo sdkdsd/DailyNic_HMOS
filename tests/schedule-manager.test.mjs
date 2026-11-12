@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { asURL, loadLogic } from './logic-loader.mjs';
 const storageURL = asURL(`
   export let semesters = []; export const courses = new Map(); export let defaultIndex = 0;
-  export const isReady=()=>true, getSemesters=()=>semesters, setSemesters=v=>{semesters=v;};
+  export const isReady=()=>true, getSemesters=()=>structuredClone(semesters), setSemesters=v=>{semesters=v;};
   export const getDefaultSemester=()=>defaultIndex, setDefaultSemester=v=>{defaultIndex=v;};
   export const getCourses=k=>courses.get(k)||[], setCourses=(k,v)=>courses.set(k,v);
 `);
@@ -13,6 +13,7 @@ const enumURL = asURL('export const classAttribute=undefined,semesterAttribute=u
 const toolsURL = asURL(`export const colorSet=['#FFFFFFFF'],colorSetLen=1,getRandomInt=()=>0,extractCredits=()=>[];`);
 const loaded = await loadLogic('utils/Classes/ScheduleManager.ets', {
   '../ScheduleStorage':storageURL, '../CampusConfig':profileURL,
+  '../CampusTime':new URL('../entry/src/main/ets/utils/CampusTime.ts',import.meta.url).href,
   '../../constants/ScheduleSources':enumURL, '../tools':toolsURL
 });
 const manager = loaded.module.default;
@@ -43,4 +44,18 @@ test('Sunday remains in its teaching week; odd-week course does not appear in ev
   assert.equal(manager.getDefaultClassByDay(1,1).length,0);
   config.setReady(false);
   assert.deepEqual(manager.getDefaultClassByDay(1,0),[]);
+});
+
+test('applying the 20-week calendar preserves its length after course edits and refuses overflow',()=>{
+ const first=Date.parse('2026-08-31T00:00:00+08:00');
+ assert.equal(manager.applyCalendar(0,first,20,'2026 autumn','calendar screenshot'),undefined);
+ assert.equal(manager.semesters[0].totalWeekNum,20);
+ assert.equal(manager.semesters[0].calendarWeekCount,20);
+ assert.equal(manager.coverExistSemester(0,[],0),undefined);
+ assert.equal(manager.semesters[0].totalWeekNum,20);
+ manager.init();assert.equal(manager.semesters[0].totalWeekNum,20);
+ const previous=structuredClone(manager.semesters);
+ storage.setCourses(manager.semesters[0].createTime,[{weekOfTerm:[21]}]);
+ assert.match(manager.applyCalendar(0,first,20,'x','x'),/超出/);
+ assert.deepEqual(manager.semesters,previous);
 });

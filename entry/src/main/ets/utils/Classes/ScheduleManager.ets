@@ -1,4 +1,5 @@
 import { campusReady, firstTeachingMonday } from '../CampusConfig';
+import { mondayStart } from '../CampusTime';
 // 用于管理多学期的 ScheduleManager
 
 import * as ScheduleStorage from '../ScheduleStorage';
@@ -169,7 +170,7 @@ class ScheduleManager {
   newSemester(name: string, source: string, beginTime: number, createTime: number, totWeekNum: number = 0, timetable: classAttribute[] = []): string | undefined {
     try {
       if (timetable) {
-        totWeekNum = this.getLatestWeek(timetable);
+        totWeekNum = Math.max(totWeekNum, this.getLatestWeek(timetable));
       }
       const semesterConfig: semesterAttribute = {
         name: name,
@@ -255,7 +256,7 @@ class ScheduleManager {
       }
 
       ScheduleStorage.setCourses(this.semesters[id].createTime, newSchedule);
-      let latestWeek: number = this.getLatestWeek(newSchedule);
+      let latestWeek: number = Math.max(this.semesters[id].calendarWeekCount || 0, this.getLatestWeek(newSchedule));
       if (latestWeek !== this.semesters[id].totalWeekNum) {
         this.semesters[id].totalWeekNum = latestWeek;
         ScheduleStorage.setSemesters(this.semesters);
@@ -383,6 +384,27 @@ class ScheduleManager {
       return;
     } catch(err) {
       return JSON.stringify(err);
+    }
+  }
+
+  // User action only: apply a verified calendar without changing any course data.
+  applyCalendar(id: number, firstMonday: number, weeks: number, name: string, source: string): string | undefined {
+    try {
+      if (!Number.isInteger(id) || id < 0 || id >= this.semesters.length || !Number.isFinite(firstMonday) || firstMonday !== mondayStart(firstMonday) ||
+        !Number.isInteger(weeks) || weeks < 1 || weeks > 30) throw new Error('校历参数无效');
+      const courses = ScheduleStorage.getCourses(this.semesters[id].createTime);
+      if (this.getLatestWeek(courses) > weeks) throw new Error('已有课程超出校历周数，请先核对课程');
+      const semesters = ScheduleStorage.getSemesters();
+      semesters[id].beginTime = firstMonday;
+      semesters[id].calendarWeekCount = weeks;
+      semesters[id].totalWeekNum = weeks;
+      semesters[id].name = name;
+      semesters[id].source = source;
+      ScheduleStorage.setSemesters(semesters);
+      this.semesters = semesters;
+      return;
+    } catch (error) {
+      return (error as Error).message;
     }
   }
 

@@ -4,6 +4,13 @@ export const DAY_MS: number = 86400000;
 export const WEEK_MS: number = 7 * DAY_MS;
 export const CHINA_OFFSET_MS: number = 8 * 3600000;
 
+// Personal seasonal rule: May 1 inclusive through September 30 in Beijing time.
+export function isSummerDate(timestamp: number): boolean {
+  if (!Number.isFinite(timestamp)) throw new Error('作息日期无效');
+  const month = new Date(timestamp + CHINA_OFFSET_MS).getUTCMonth() + 1;
+  return month >= 5 && month < 10;
+}
+
 export function chinaDayStart(timestamp: number): number {
   return Math.floor((timestamp + CHINA_OFFSET_MS) / DAY_MS) * DAY_MS - CHINA_OFFSET_MS;
 }

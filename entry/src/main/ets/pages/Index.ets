@@ -17,7 +17,7 @@ import { TodoItem, TodoType, IndexedTodoItem, filterItems, getEffectiveTime } fr
 
 import BackgroundImage, { presetColor } from '../utils/BgImageManager'
 import { GridComponent, MostRecentComponent } from '../view/GridComponent'
-import { campusReady, SCHOOL_LOGIN } from '../utils/CampusConfig';
+import { campusReady, SCHOOL_LOGIN, refreshCampusTimes, periodsForDate } from '../utils/CampusConfig';
 import { teachingWeek, chinaDayStart, chinaWeekday } from '../utils/CampusTime';
 import ItemData from '../view/SettingsComponent'
 
@@ -310,6 +310,7 @@ struct Index {
     if (ScheduleManager.semesters.length === 0) ScheduleManager.init();
     this.campusConfigured = campusReady();
     this.currentTime = new Date();
+    refreshCampusTimes(this.currentTime.getTime());
     const termStartTime: number = ScheduleManager.semesters[ScheduleManager.defaultSemester].beginTime;
     this.todayBeginTime = chinaDayStart(this.currentTime.getTime());
     if (!campusReady() || this.currentTime.getTime() < termStartTime) {
@@ -688,7 +689,7 @@ struct Index {
                       .textOverflow({ overflow: TextOverflow.Ellipsis })
                       .visibility(course.location === '' ? Visibility.None : Visibility.Visible);
 
-                    Text(`\udb80\udfdc ${ScheduleSources.commonClassTime[course.timeSpan[0]][0]}~${ScheduleSources.commonClassTime[course.timeSpan[course.timeSpan.length - 1]][1]}`)
+                    Text(`\udb80\udfdc ${periodsForDate(this.currentTime.getTime() + 86400000)[course.timeSpan[0]][0]}~${periodsForDate(this.currentTime.getTime() + 86400000)[course.timeSpan[course.timeSpan.length - 1]][1]}`)
                       .fontSize(14)
                       .maxLines(1)
                       .textOverflow({ overflow: TextOverflow.Ellipsis })

@@ -60,3 +60,29 @@ test('bad stored configuration does not silently fall back to another university
   assert.deepEqual(sources.module.commonClassTime, [['--:--', '--:--']]);
   assert.throws(() => c.saveCampusProfile({ firstMonday: '2026-09-06', periodsText: '08:10-08:55', source: 'test' }));
 });
+
+test('seasonal profiles reload both tables; backups compare both seasons independent of export date', async () => {
+  const winter='08:00-08:50\n14:00-14:50';
+  const summer='08:00-08:50\n14:30-15:20';
+  c.saveCampusProfile({firstMonday:'2026-08-31',periodsText:winter,summerPeriodsText:summer,source:'Synthetic seasonal fixture'});
+  c.loadCampusProfile();
+  assert.equal(c.periodsForDate(Date.parse('2026-09-30T23:59:59+08:00'))[2][0],'14:30');
+  assert.equal(c.periodsForDate(Date.parse('2026-10-01T00:00:00+08:00'))[2][0],'14:00');
+  assert.equal(c.periodsForDate(Date.parse('2027-04-30T23:59:59+08:00'))[2][0],'14:00');
+  assert.equal(c.periodsForDate(Date.parse('2027-05-01T00:00:00+08:00'))[2][0],'14:30');
+  const backup=fixture();
+  backup.scheduleVersion='sust-xian-2-seasonal';
+  backup.periods=[['08:00','08:50'],['14:00','14:50']];
+  backup.summerPeriods=[['08:00','08:50'],['14:30','15:20']];
+  backup.semesters[0].attribute.totalWeekNum=20;
+  backup.semesters[0].attribute.calendarWeekCount=20;
+  for(const date of ['2026-08-31','2026-10-01']) {
+    c.refreshCampusTimes(Date.parse(date+'T00:00:00+08:00'));
+    assert.equal(validate(backup),'');
+  }
+  backup.summerPeriods[1][0]='14:31';assert.notEqual(validate(backup),'');
+  assert.throws(()=>c.saveCampusProfile({firstMonday:'2026-08-31',periodsText:winter,summerPeriodsText:'14:30-15:20',source:'x'}));
+  assert.equal(c.getCampusProfile().summerPeriodsText,summer);
+  const times=c.periodsForDate(Date.parse('2026-10-01T00:00:00+08:00'));times[2][0]='00:00';
+  assert.equal(c.periodsForDate(Date.parse('2026-10-01T00:00:00+08:00'))[2][0],'14:00');
+});

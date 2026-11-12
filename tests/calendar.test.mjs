@@ -78,3 +78,15 @@ test('exam events use China timestamps, reject invalid input and support no remi
   assert.deepEqual(result[0].reminderTime,[]);
   assert.throws(()=>events.examEvents([{date:'2026-09-13 08:00~08:00'}],10));
 });
+
+test('a full-term calendar selects seasonal hours for each occurrence, including evening and year boundaries',()=>{
+ const winter=[['--:--','--:--'],['14:00','14:50'],['19:00','19:50']];
+ const summer=[['--:--','--:--'],['14:30','15:20'],['19:30','20:20']];
+ const course={name:'Synthetic seasonal',location:'',timeSpan:[2],weekOfTerm:[4,5,20],dayOfWeek:4};
+ const semester={beginTime:Date.parse('2026-08-31T00:00:00+08:00'),totalWeekNum:20};
+ const result=events.courseEvents([course],semester,winter,10,summer);
+ assert.deepEqual(result.map(e=>e.startTime),['2026-09-24T19:30:00+08:00','2026-10-01T19:00:00+08:00','2027-01-14T19:00:00+08:00'].map(Date.parse));
+ assert.throws(()=>events.courseEvents([course],semester,winter,10,summer.slice(1)));
+ const spring=events.courseEvents([{...course,dayOfWeek:6,weekOfTerm:[1,2]}],{beginTime:Date.parse('2027-04-19T00:00:00+08:00'),totalWeekNum:2},winter,10,summer);
+ assert.deepEqual(spring.map(e=>e.startTime),['2027-04-24T19:00:00+08:00','2027-05-01T19:30:00+08:00'].map(Date.parse));
+});

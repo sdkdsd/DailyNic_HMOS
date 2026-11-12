@@ -1,11 +1,12 @@
 import { calendarManager } from '@kit.CalendarKit';
 import { classAttribute, semesterAttribute } from '../constants/ScheduleSources';
 import { examAttribute } from './ExamStorage';
-import { classTimestamp, clockStamp, examTimestamps } from './CampusTime';
+import { classTimestamp, clockStamp, examTimestamps, isSummerDate } from './CampusTime';
 
 export function courseEvents(courses: classAttribute[], semester: semesterAttribute,
-  periods: string[][], minute: number): calendarManager.Event[] {
+  periods: string[][], minute: number, summerPeriods?: string[][]): calendarManager.Event[] {
   const events: calendarManager.Event[] = [];
+  if (summerPeriods !== undefined && summerPeriods.length !== periods.length) throw new Error('夏冬季节次数不一致');
   for (const course of courses) {
     if (!course.timeSpan.length || !course.weekOfTerm.length) throw new Error('课程缺少节次或周次');
     for (let i = 0; i < course.timeSpan.length; i++) {
@@ -16,9 +17,11 @@ export function courseEvents(courses: classAttribute[], semester: semesterAttrib
     for (let i = 0; i < course.weekOfTerm.length; i++) {
       const week = course.weekOfTerm[i];
       if (week > semester.totalWeekNum || (i > 0 && week <= course.weekOfTerm[i - 1])) throw new Error('课程周次无效');
-      const start = classTimestamp(semester.beginTime, week, course.dayOfWeek, clockStamp(periods[course.timeSpan[0]][0]));
+      const day = classTimestamp(semester.beginTime, week, course.dayOfWeek, 0);
+      const times = summerPeriods !== undefined && isSummerDate(day) ? summerPeriods : periods;
+      const start = day + clockStamp(times[course.timeSpan[0]][0]);
       const end = classTimestamp(semester.beginTime, week, course.dayOfWeek,
-        clockStamp(periods[course.timeSpan[course.timeSpan.length - 1]][1]));
+        clockStamp(times[course.timeSpan[course.timeSpan.length - 1]][1]));
       if (end <= start) throw new Error('课程结束时间无效');
       events.push({ title: course.name, location: { location: course.location },
         type: calendarManager.EventType.NORMAL, startTime: start, endTime: end,

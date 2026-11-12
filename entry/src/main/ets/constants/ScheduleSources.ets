@@ -1,5 +1,5 @@
-import { classTimes, classStamps, periodCount, campusReady } from '../utils/CampusConfig';
-import { mondayStart } from '../utils/CampusTime';
+import { classTimes, classStamps, periodCount, campusReady, getCampusProfile } from '../utils/CampusConfig';
+import { mondayStart, parsePeriods } from '../utils/CampusTime';
 
 import UnifiedPreferences from '../utils/UnifyPreference';
 
@@ -21,7 +21,8 @@ export interface semesterAttribute {
   createTime: number, // 课表创建时间戳，用于读取不同课表
   source: string, // 最后一次编辑来源
   beginTime: number, // 学期开始时间戳
-  totalWeekNum: number // 课程最大周数
+  totalWeekNum: number, // 校历周数和课程最大周数中的较大值
+  calendarWeekCount?: number // 明确应用的校历周数；旧版数据可缺省
 }
 
 export interface exportSemester {
@@ -33,6 +34,7 @@ export interface exportedData {
   exportTime: number,
   scheduleVersion: string,
   periods: string[][],
+  summerPeriods?: string[][],
   defaultSemester: number,
   semesters: exportSemester[]
 };
@@ -83,8 +85,11 @@ export function validateExportedData(data: object): string {
   // 类型断言为显式定义的类型（仅用于 TS 编译，运行时靠原生判断）
   const exportedData = data as exportedData;
   if (!campusReady()) return '请先核对并配置西安校区作息';
-  if (exportedData.scheduleVersion !== 'sust-xian-1') return '仅支持陕科大个人版备份；旧版星期和节次含义不同，不能直接导入';
-  if (JSON.stringify(exportedData.periods) !== JSON.stringify(classTimes.slice(1))) return '备份作息与当前配置不同，请先核对课时后再导入';
+  const campusProfile = getCampusProfile()!;
+  const seasonal = campusProfile.summerPeriodsText !== undefined;
+  if (exportedData.scheduleVersion !== (seasonal ? 'sust-xian-2-seasonal' : 'sust-xian-1')) return '备份作息模式或版本不一致，请先核对夏冬季配置；不直接导入旧学校备份';
+  if (JSON.stringify(exportedData.periods) !== JSON.stringify(parsePeriods(campusProfile.periodsText))) return '备份作息与当前配置不同，请先核对课时后再导入';
+  if (seasonal && JSON.stringify(exportedData.summerPeriods) !== JSON.stringify(parsePeriods(campusProfile.summerPeriodsText!))) return '备份夏季作息与当前配置不同';
 
   // ------------------------------
   // 校验顶层字段（typeof 判断）
@@ -191,6 +196,8 @@ export function validateExportedData(data: object): string {
         if (!Number.isFinite(attribute.createTime) || seenTimes.includes(attribute.createTime)) return '学期标识无效或重复';
         seenTimes.push(attribute.createTime);
         // 5. totalWeekNum
+        if (attribute.calendarWeekCount !== undefined && (!Number.isInteger(attribute.calendarWeekCount) ||
+          attribute.calendarWeekCount < 1 || attribute.calendarWeekCount > 30 || attribute.totalWeekNum < attribute.calendarWeekCount)) return '校历周数无效';
         if (attribute.totalWeekNum === undefined || attribute.totalWeekNum === null) {
           return `${attributePath} 缺少必填字段: totalWeekNum`;
         } else if (typeof attribute.totalWeekNum !== 'number') {
