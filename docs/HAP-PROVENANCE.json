@@ -1,14 +1,14 @@
 {
-  "file": "DailyNic-SUST-2.3.0-sust.5-80a26c3-personal-signed.hap",
-  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.5-80a26c3-personal-signed.hap",
-  "bytes": 15162899,
-  "sha256": "db2f27a5f264a49b9fd0f394edb0878df6879558b8e8d49dd2c7472e4387f44e",
-  "source_commit": "80a26c39db2868c390b6aedaca72fac993a8851f",
-  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/80a26c39db2868c390b6aedaca72fac993a8851f",
+  "file": "DailyNic-SUST-2.3.0-sust.7-8d5221d-personal-signed.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.7-8d5221d-personal-signed.hap",
+  "bytes": 15159938,
+  "sha256": "ee5df14e6346813bcc42f660a0443968d0286286be05fd5b20389e2b6ba4c21c",
+  "source_commit": "8d5221dece20080c650a5113cba66a76221cd5d8",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/8d5221dece20080c650a5113cba66a76221cd5d8",
   "source_worktree_clean_at_build": true,
   "bundleName": "com.sdkdsd.dailynic.sust",
-  "versionName": "2.3.0-sust.5",
-  "versionCode": 2003005,
+  "versionName": "2.3.0-sust.7",
+  "versionCode": 2003007,
   "compileSdkVersion": "26.0.0.105",
   "targetAPIVersion": 60100023,
   "minAPIVersion": 60100023,
@@ -19,10 +19,10 @@
   "signature_status": "PERSONAL DEBUG SIGNED; local authorized device only",
   "signature_evidence": "Official hap-sign-tool verify-app: Verify success; verify-app success",
   "host_tests": {
-    "node_passed": 56,
+    "node_passed": 58,
     "python_previous_passed": 12,
     "node": "24.16.0",
-    "scope": "Synthetic logic, DOM and storage/API stubs. Python importer unchanged; its 12 passes are from sust.4."
+    "scope": "58 Node passes at sust.6; sust.7 changes only rendering keys and version, 9 learning tests re-run and passed. Real clean ArkTS/HAP build passed. Python importer unchanged; 12 passes are historical sust.4."
   },
   "build_tools": {
     "node": "24.14.1",
@@ -34,14 +34,8 @@
     "system": "OpenHarmony-7.0.0.111",
     "api": 26
   },
-  "phone_installation": "HDC install/start succeeded; official login page rendered; user login and both official task lists observed before cumulative-hour parsing fix.",
-  "phone_tests": [
-    "signed sust.5 installed and started",
-    "official Chaoxing login page rendered",
-    "user personally logged in",
-    "homework and exam list pages opened read-only",
-    "real cumulative-hour remaining time identified and parser fixed; fixed build installed"
-  ],
+  "phone_installation": "NOT INSTALLED: user requested batched updates without repeated login. Device remains on sust.6.",
+  "phone_tests": [],
   "phone_not_tested": [
     "actual school schedule change",
     "natural session expiration",
@@ -51,16 +45,17 @@
     "file picker",
     "complete exams/todos workflows",
     "coexistence with original app",
-    "Learning Tasks fixed parser real preview/save/repeat refresh",
-    "Learning Tasks home/todo display and cache cold start",
-    "empty/paginated task lists"
+    "empty/paginated task lists",
+    "Exam cache cold start after saving: intentionally no second restart",
+    "sust.7 content-aware row rendering fix: built, not installed",
+    "sust.7 installation and all real-device behavior"
   ],
   "download_url": null,
   "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
   "unsigned_artifact": {
-    "file": "DailyNic-SUST-2.3.0-sust.5-80a26c3-unsigned.hap",
-    "bytes": 15102810,
-    "sha256": "e691bfb4926b4ee30dd6eb9c54750e444d799ec31fb16eeb19d0e69aaa723f19",
+    "file": "DailyNic-SUST-2.3.0-sust.7-8d5221d-unsigned.hap",
+    "bytes": 15107611,
+    "sha256": "f4f06433c4105d404e915d444631e00f29b9df7c8093ef83835875bc74726907",
     "installation": "cannot install directly"
   },
   "unimplemented": [
@@ -72,5 +67,18 @@
     "evening period preset 9-11",
     "SUST EAMS online exams",
     "Chaoxing chapters/notices deliberately out of scope"
-  ]
+  ],
+  "previous_phone_validation": {
+    "version": "2.3.0-sust.6",
+    "provenance": "HAP-PROVENANCE-sust.6.json",
+    "tests": [
+      "Personal login and both official lists opened in one session",
+      "60 homework records previewed and saved: 2 pending",
+      "52 exam records previewed and saved: 5 unsubmitted, deadline unknown",
+      "Repeated exam read/save remained 52 records and 5 pending; estimated dates unchanged",
+      "Todo view showed 7 unique pending items across scrolling; submitted/reviewed/completed excluded",
+      "Home showed merged source summaries and homework/exams; existing rows retained stale read time (known rendering issue)",
+      "Previous homework cache survived sust.6 installation and process restart"
+    ]
+  }
 }

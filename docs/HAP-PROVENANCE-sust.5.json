@@ -1,0 +1,76 @@
+{
+  "file": "DailyNic-SUST-2.3.0-sust.5-80a26c3-personal-signed.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.5-80a26c3-personal-signed.hap",
+  "bytes": 15162899,
+  "sha256": "db2f27a5f264a49b9fd0f394edb0878df6879558b8e8d49dd2c7472e4387f44e",
+  "source_commit": "80a26c39db2868c390b6aedaca72fac993a8851f",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/80a26c39db2868c390b6aedaca72fac993a8851f",
+  "source_worktree_clean_at_build": true,
+  "bundleName": "com.sdkdsd.dailynic.sust",
+  "versionName": "2.3.0-sust.5",
+  "versionCode": 2003005,
+  "compileSdkVersion": "26.0.0.105",
+  "targetAPIVersion": 60100023,
+  "minAPIVersion": 60100023,
+  "apiReleaseType": "Release",
+  "build_command": "./build.ps1 -DevEcoHome <existing DevEco Studio> -Clean",
+  "zip_entries": 298,
+  "zip_crc": "passed",
+  "signature_status": "PERSONAL DEBUG SIGNED; local authorized device only",
+  "signature_evidence": "Official hap-sign-tool verify-app: Verify success; verify-app success",
+  "host_tests": {
+    "node_passed": 56,
+    "python_previous_passed": 12,
+    "node": "24.16.0",
+    "scope": "Synthetic logic, DOM and storage/API stubs. Python importer unchanged; its 12 passes are from sust.4."
+  },
+  "build_tools": {
+    "node": "24.14.1",
+    "hvigor": "6.26.4",
+    "java": "25.0.2"
+  },
+  "phone_device": {
+    "model": "MIA-AL00",
+    "system": "OpenHarmony-7.0.0.111",
+    "api": 26
+  },
+  "phone_installation": "HDC install/start succeeded; official login page rendered; user login and both official task lists observed before cumulative-hour parsing fix.",
+  "phone_tests": [
+    "signed sust.5 installed and started",
+    "official Chaoxing login page rendered",
+    "user personally logged in",
+    "homework and exam list pages opened read-only",
+    "real cumulative-hour remaining time identified and parser fixed; fixed build installed"
+  ],
+  "phone_not_tested": [
+    "actual school schedule change",
+    "natural session expiration",
+    "network physically disconnected",
+    "widgets and background refresh",
+    "calendar permissions and lock-screen reminders",
+    "file picker",
+    "complete exams/todos workflows",
+    "coexistence with original app",
+    "Learning Tasks fixed parser real preview/save/repeat refresh",
+    "Learning Tasks home/todo display and cache cold start",
+    "empty/paginated task lists"
+  ],
+  "download_url": null,
+  "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
+  "unsigned_artifact": {
+    "file": "DailyNic-SUST-2.3.0-sust.5-80a26c3-unsigned.hap",
+    "bytes": 15102810,
+    "sha256": "e691bfb4926b4ee30dd6eb9c54750e444d799ec31fb16eeb19d0e69aaa723f19",
+    "installation": "cannot install directly"
+  },
+  "unimplemented": [
+    "background scheduled sync",
+    "course catalog",
+    "classroom query",
+    "direct Excel/PDF import",
+    "holiday makeup mapping",
+    "evening period preset 9-11",
+    "SUST EAMS online exams",
+    "Chaoxing chapters/notices deliberately out of scope"
+  ]
+}

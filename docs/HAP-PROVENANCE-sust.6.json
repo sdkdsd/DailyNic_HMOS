@@ -1,0 +1,78 @@
+{
+  "file": "DailyNic-SUST-2.3.0-sust.6-f1a49ac-personal-signed.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.6-f1a49ac-personal-signed.hap",
+  "bytes": 15159988,
+  "sha256": "62dba5f944ae0c535411648560bf5c7d34449eaeec2d767fd337f18b1cd00c35",
+  "source_commit": "f1a49ac4d406f92bc7334ab1ffdf62d6c6024d57",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/f1a49ac4d406f92bc7334ab1ffdf62d6c6024d57",
+  "source_worktree_clean_at_build": true,
+  "bundleName": "com.sdkdsd.dailynic.sust",
+  "versionName": "2.3.0-sust.6",
+  "versionCode": 2003006,
+  "compileSdkVersion": "26.0.0.105",
+  "targetAPIVersion": 60100023,
+  "minAPIVersion": 60100023,
+  "apiReleaseType": "Release",
+  "build_command": "./build.ps1 -DevEcoHome <existing DevEco Studio> -Clean",
+  "zip_entries": 298,
+  "zip_crc": "passed",
+  "signature_status": "PERSONAL DEBUG SIGNED; local authorized device only",
+  "signature_evidence": "Official hap-sign-tool verify-app: Verify success; verify-app success",
+  "host_tests": {
+    "node_passed": 58,
+    "python_previous_passed": 12,
+    "node": "24.16.0",
+    "scope": "Synthetic logic, DOM and storage/API stubs. Python importer unchanged; its 12 passes are from sust.4."
+  },
+  "build_tools": {
+    "node": "24.14.1",
+    "hvigor": "6.26.4",
+    "java": "25.0.2"
+  },
+  "phone_device": {
+    "model": "MIA-AL00",
+    "system": "OpenHarmony-7.0.0.111",
+    "api": 26
+  },
+  "phone_installation": "sust.6 installed and started; previous homework cache, schedule and manual exam preserved.",
+  "phone_tests": [
+    "Personal login and both official lists opened in one session",
+    "60 homework records previewed and saved: 2 pending",
+    "52 exam records previewed and saved: 5 unsubmitted, deadline unknown",
+    "Repeated exam read/save remained 52 records and 5 pending; estimated dates unchanged",
+    "Todo view showed 7 unique pending items across scrolling; submitted/reviewed/completed excluded",
+    "Home showed merged source summaries and homework/exams; existing rows retained stale read time (known rendering issue)",
+    "Previous homework cache survived sust.6 installation and process restart"
+  ],
+  "phone_not_tested": [
+    "actual school schedule change",
+    "natural session expiration",
+    "network physically disconnected",
+    "widgets and background refresh",
+    "calendar permissions and lock-screen reminders",
+    "file picker",
+    "complete exams/todos workflows",
+    "coexistence with original app",
+    "empty/paginated task lists",
+    "Exam cache cold start after saving: intentionally no second restart",
+    "sust.7 content-aware row rendering fix: built, not installed"
+  ],
+  "download_url": null,
+  "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
+  "unsigned_artifact": {
+    "file": "DailyNic-SUST-2.3.0-sust.6-f1a49ac-unsigned.hap",
+    "bytes": 15107533,
+    "sha256": "9a7aa0fd44fe0c68f5c20e2993f48f7b63fc6166c89436ca337f015a33cd4b24",
+    "installation": "cannot install directly"
+  },
+  "unimplemented": [
+    "background scheduled sync",
+    "course catalog",
+    "classroom query",
+    "direct Excel/PDF import",
+    "holiday makeup mapping",
+    "evening period preset 9-11",
+    "SUST EAMS online exams",
+    "Chaoxing chapters/notices deliberately out of scope"
+  ]
+}
