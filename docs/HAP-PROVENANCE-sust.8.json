@@ -1,0 +1,89 @@
+{
+  "file": "DailyNic-SUST-2.3.0-sust.8-50896d3-personal-signed.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.8-50896d3-personal-signed.hap",
+  "bytes": 15186261,
+  "sha256": "3072bb72a0ca39a4857855222a60ec8b5065bef573d715038f207eda328c5ba5",
+  "source_commit": "50896d37b9507ed3a6d080aba04668b802c51165",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/50896d37b9507ed3a6d080aba04668b802c51165",
+  "source_worktree_clean_at_build": true,
+  "bundleName": "com.sdkdsd.dailynic.sust",
+  "versionName": "2.3.0-sust.8",
+  "versionCode": 2003008,
+  "compileSdkVersion": "26.0.0.105",
+  "targetAPIVersion": 60100023,
+  "minAPIVersion": 60100023,
+  "apiReleaseType": "Release",
+  "build_command": "./build.ps1 -DevEcoHome <existing DevEco Studio> -Clean",
+  "zip_entries": 298,
+  "zip_crc": "passed",
+  "signature_status": "PERSONAL DEBUG SIGNED; local authorized device only",
+  "signature_evidence": "Official hap-sign-tool verify-app: Verify success; verify-app success",
+  "host_tests": {
+    "node_passed": 60,
+    "python_previous_passed": 12,
+    "node": "24.16.0",
+    "scope": "All 60 Node tests passed, including 11 learning tests. Expiry boundary regression failed before the fix and passed after. Python unchanged; historical 12 passes at sust.4."
+  },
+  "build_tools": {
+    "node": "24.14.1",
+    "hvigor": "6.26.4",
+    "java": "25.0.2"
+  },
+  "phone_device": {
+    "model": "MIA-AL00",
+    "system": "OpenHarmony-7.0.0.111",
+    "api": 26
+  },
+  "phone_installation": "sust.8 installed and started successfully; no additional login requested.",
+  "phone_tests": [
+    "Existing caches read successfully after upgrade",
+    "Home and Todo show no confirmed pending tasks and collapsed review group of 7 unknown-deadline records",
+    "Review group expands with uncertainty explanation and collapses again",
+    "No task titles visible in home while review group collapsed; no personal data deleted"
+  ],
+  "phone_not_tested": [
+    "actual school schedule change",
+    "natural session expiration",
+    "network physically disconnected",
+    "widgets and background refresh",
+    "calendar permissions and lock-screen reminders",
+    "file picker",
+    "complete exams/todos workflows",
+    "coexistence with original app",
+    "empty/paginated task lists",
+    "Real task crossing expiry while screen stays open: minute timer not device-tested",
+    "New unlimited/ended deadline markers on a fresh official read: host synthetic coverage only",
+    "Updated online preview in sust.8: no additional login/read requested"
+  ],
+  "download_url": null,
+  "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
+  "unsigned_artifact": {
+    "file": "DailyNic-SUST-2.3.0-sust.8-50896d3-unsigned.hap",
+    "bytes": 15126699,
+    "sha256": "7eff3f418862403384379b62f859fbc839af500f338acc037c418dd8ef474a96",
+    "installation": "cannot install directly"
+  },
+  "unimplemented": [
+    "background scheduled sync",
+    "course catalog",
+    "classroom query",
+    "direct Excel/PDF import",
+    "holiday makeup mapping",
+    "evening period preset 9-11",
+    "SUST EAMS online exams",
+    "Chaoxing chapters/notices deliberately out of scope"
+  ],
+  "previous_phone_validation": {
+    "version": "2.3.0-sust.6",
+    "provenance": "HAP-PROVENANCE-sust.6.json",
+    "tests": [
+      "Personal login and both official lists opened in one session",
+      "60 homework records previewed and saved: 2 pending",
+      "52 exam records previewed and saved: 5 unsubmitted, deadline unknown",
+      "Repeated exam read/save remained 52 records and 5 pending; estimated dates unchanged",
+      "Todo view showed 7 unique pending items across scrolling; submitted/reviewed/completed excluded",
+      "Home showed merged source summaries and homework/exams; existing rows retained stale read time (known rendering issue)",
+      "Previous homework cache survived sust.6 installation and process restart"
+    ]
+  }
+}

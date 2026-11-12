@@ -1,28 +1,28 @@
 {
-  "file": "DailyNic-SUST-2.3.0-sust.8-50896d3-personal-signed.hap",
-  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.8-50896d3-personal-signed.hap",
-  "bytes": 15186261,
-  "sha256": "3072bb72a0ca39a4857855222a60ec8b5065bef573d715038f207eda328c5ba5",
-  "source_commit": "50896d37b9507ed3a6d080aba04668b802c51165",
-  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/50896d37b9507ed3a6d080aba04668b802c51165",
-  "source_worktree_clean_at_build": true,
+  "file": "DailyNic-SUST-2.3.0-sust.10-a1e41d5-personal-signed.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.10-a1e41d5-personal-signed.hap",
+  "bytes": 15220470,
+  "sha256": "10f13a35848066949460f67b958c30a7e9799bf4cb613c04fd364223ef6bf66c",
+  "source_commit": "a1e41d571f37ab38a2246cf29a9a6c30c909e857",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/a1e41d571f37ab38a2246cf29a9a6c30c909e857",
+  "source_worktree_clean_at_build": false,
   "bundleName": "com.sdkdsd.dailynic.sust",
-  "versionName": "2.3.0-sust.8",
-  "versionCode": 2003008,
+  "versionName": "2.3.0-sust.10",
+  "versionCode": 2003010,
   "compileSdkVersion": "26.0.0.105",
   "targetAPIVersion": 60100023,
   "minAPIVersion": 60100023,
   "apiReleaseType": "Release",
-  "build_command": "./build.ps1 -DevEcoHome <existing DevEco Studio> -Clean",
+  "build_command": "./build.ps1 -DevEcoHome <existing DevEco Studio>",
   "zip_entries": 298,
   "zip_crc": "passed",
   "signature_status": "PERSONAL DEBUG SIGNED; local authorized device only",
   "signature_evidence": "Official hap-sign-tool verify-app: Verify success; verify-app success",
   "host_tests": {
-    "node_passed": 60,
+    "node_passed": 62,
     "python_previous_passed": 12,
     "node": "24.16.0",
-    "scope": "All 60 Node tests passed, including 11 learning tests. Expiry boundary regression failed before the fix and passed after. Python unchanged; historical 12 passes at sust.4."
+    "scope": "62 Node tests, including 13 learning tests. Exact-ID dismissal, same-title new ID, source isolation, refresh retention, restoration, atomic failure and stale-preview protections passed. Python unchanged."
   },
   "build_tools": {
     "node": "24.14.1",
@@ -34,12 +34,13 @@
     "system": "OpenHarmony-7.0.0.111",
     "api": 26
   },
-  "phone_installation": "sust.8 installed and started successfully; no additional login requested.",
+  "phone_installation": "sust.10 installed and started successfully, no further login requested.",
   "phone_tests": [
-    "Existing caches read successfully after upgrade",
-    "Home and Todo show no confirmed pending tasks and collapsed review group of 7 unknown-deadline records",
-    "Review group expands with uncertainty explanation and collapses again",
-    "No task titles visible in home while review group collapsed; no personal data deleted"
+    "Seven personally verified stale records removed individually through application UI in sust.9",
+    "All seven dismissal choices survived upgrade to sust.10",
+    "Settings recovery page opens; restored one record, observed it in review group, removed it again",
+    "Final Todo view has no removed-record section and no remaining uncertain records; removed records accessible in Settings only",
+    "No school login, online task refresh, credentials or school business writes during this round"
   ],
   "phone_not_tested": [
     "actual school schedule change",
@@ -53,14 +54,15 @@
     "empty/paginated task lists",
     "Real task crossing expiry while screen stays open: minute timer not device-tested",
     "New unlimited/ended deadline markers on a fresh official read: host synthetic coverage only",
-    "Updated online preview in sust.8: no additional login/read requested"
+    "Same-title future task with different source ID: host synthetic test only",
+    "Online refresh after manual dismissal: host synthetic test only"
   ],
   "download_url": null,
   "distribution": "Local only. Personal debug profile and HAP are not uploaded; no credentials or private course fixtures in Git.",
   "unsigned_artifact": {
-    "file": "DailyNic-SUST-2.3.0-sust.8-50896d3-unsigned.hap",
-    "bytes": 15126699,
-    "sha256": "7eff3f418862403384379b62f859fbc839af500f338acc037c418dd8ef474a96",
+    "file": "DailyNic-SUST-2.3.0-sust.10-a1e41d5-unsigned.hap",
+    "bytes": 15156282,
+    "sha256": "e75bfdb621c8832398e314dbc504964c37e44f64111f822829a8973bcc5fde7f",
     "installation": "cannot install directly"
   },
   "unimplemented": [
@@ -85,5 +87,6 @@
       "Home showed merged source summaries and homework/exams; existing rows retained stale read time (known rendering issue)",
       "Previous homework cache survived sust.6 installation and process restart"
     ]
-  }
+  },
+  "source_note": "Built from working tree then committed unchanged as a1e41d5; build-generated BuildProfile has no semantic diff."
 }
