@@ -991,7 +991,10 @@ struct Schedule {
   }
 
   aboutToAppear(): void {
-    this.updateTimeLine();
+    // The custom title is rendered before NavDestination.onReady/onShown.
+    // Populate the semester and week before its first totalWeekNum access.
+    this.initSchedule();
+    this.refreshGrid();
     this.timeLineTimer = setInterval(() => this.updateTimeLine(), 60000); // 每60秒刷新一次
   }
 
@@ -1255,7 +1258,6 @@ struct Schedule {
     })
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;
-      this.initSchedule(); // 在onShown中刷新显示
     })
     .onShown(() => {
       this.initSchedule();

@@ -1,0 +1,45 @@
+{
+  "file": "DailyNic-SUST-2.3.0-sust.3-4205d16-unsigned.hap",
+  "local_artifact": "artifacts/DailyNic-SUST-2.3.0-sust.3-4205d16-unsigned.hap",
+  "bytes": 15004408,
+  "sha256": "07c30b27b068c8d6e6475a955f1af345a59bce7f0e74304b739d06acb04463fa",
+  "source_commit": "4205d16d31b2eb0d15a961af9a13f31d6b52e7ee",
+  "source_url": "https://github.com/sdkdsd/DailyNic_HMOS/commit/4205d16d31b2eb0d15a961af9a13f31d6b52e7ee",
+  "source_worktree_clean_at_build": true,
+  "bundleName": "com.sdkdsd.dailynic.sust",
+  "versionName": "2.3.0-sust.3",
+  "versionCode": 2003003,
+  "compileSdkVersion": "26.0.0.105",
+  "targetAPIVersion": 60100023,
+  "minAPIVersion": 60100023,
+  "apiReleaseType": "Release",
+  "build_command": "./build.ps1 -DevEcoHome <existing DevEco Studio> -Clean",
+  "zip_entries": 297,
+  "zip_crc": "passed",
+  "signature_status": "UNSIGNED; cannot install directly",
+  "signature_evidence": "Official hap-sign-tool verify-app: signature not found; No Hap Signing Block before ZIP Central Directory",
+  "host_tests": {
+    "node_passed": 48,
+    "python_passed": 12,
+    "node": "24.16.0",
+    "scope": "logic, DOM fixture, storage/API stubs, source constraints; no phone runtime"
+  },
+  "build_tools": {
+    "node": "24.14.1",
+    "hvigor": "6.26.4",
+    "java": "25.0.2"
+  },
+  "browser_evidence": "User logged in on desktop; visible student/class controls and 12-row grids read. Private transcription cross-checked by ArkTS and Python parsers. Not phone WebView acceptance.",
+  "phone_installation": "not performed",
+  "phone_tests": "not performed",
+  "hdc_targets": "[Empty]",
+  "download_url": null,
+  "distribution": "Local artifact only; no binary or private data committed/uploaded. Prior sust.2 Drive URL is historical.",
+  "unimplemented": [
+    "background scheduled sync",
+    "online exams",
+    "direct Excel/PDF import",
+    "holiday makeup mapping",
+    "evening period preset 9-11"
+  ]
+}

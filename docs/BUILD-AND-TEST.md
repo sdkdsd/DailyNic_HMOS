@@ -2,6 +2,8 @@
 
 ## 本机 Windows 最新续作（2026-11-12）
 
+设备连接更新：MIA-AL00（DevEco 显示 nova 14 Pro），OpenHarmony-7.0.0.111 / API26。本人完成信任项目、华为登录与官方调试签名；官方 verify-app 成功，HDC 安装和启动成功。IDE 通过 `D:/DailyNic_SUST` junction 打开同一工作区，未移动源码。IDE 保存配置后 default 产品缺少 signingConfig 引用，已先备份到忽略目录，再仅补该引用。签名材料与完整配置不进 Git。手机结果详见 [DEVICE-VALIDATION.md](DEVICE-VALIDATION.md)。
+
 已有 DevEco `E:\DevEco Studio`，SDK 26.0.0.105 Release、Hvigor 6.26.4、工具 Node 24.14.1、JBR 25.0.2。主机 Node 24.16.0。保留原工具、系统环境和签名；在 `work/DailyNic_HMOS` 新目录接手，无用户原有未提交修改。
 
 缺失根配置时才复制 build-profile.json5.bak，签名配置为空。现有 OHPM 缓存两项依赖校验与锁文件一致后，用已安装 `tools/node/node.exe tools/ohpm/bin/pm-cli.js install --all --no-save --retry_times 0 --fetch_timeout 15000` 复用缓存，未升级依赖/锁文件。
@@ -14,11 +16,11 @@ node --test tests/*.test.mjs
 python -m unittest discover -s tests -p test_sust_import.py -v
 ```
 
-48项 Node、12项 Python 已通过；ArkTS/完整 HAP 构建通过。最终产物 hash/源码和签名检查见 DELIVERY.md。旧云端工具链版本是历史，不代表本机版本。
+49项 Node、12项 Python 已通过；ArkTS/完整 HAP 构建通过。最终产物 hash/源码和签名检查见 DELIVERY.md。旧云端工具链版本是历史，不代表本机版本。
 
-**手机验收新增首要项：** 正规个人签名后，在应用学校网页本人登录，分别读取学生/班级全部周，预览确认；重复获取同学期不增重复学期，网络失败和登录失效保留旧数据；退出重登、课程变化/停课、默认学期、首页与卡片刷新。当前 HDC `[Empty]`，以上全部未执行。文件选择器仍为备用验证项。
+**手机验收新增首要项：** 正规个人签名后，在应用学校网页本人登录，分别读取学生/班级全部周，预览确认；重复获取同学期不增重复学期，网络失败和登录失效保留旧数据；退出重登、课程变化/停课、默认学期、首页与卡片刷新。安装/启动/本人网页登录、两表读取保存、重复刷新、首页/周课表及缓存冷启动已通过，其余逐项见设备记录。文件选择器仍为备用验证项。
 
-## 当前环境证据（2026-11-12）
+## 历史云端环境证据（2026-11-12，非当前手机状态）
 
 本次已加载真正具备工具链的环境，在独立 `/workspace/DailyNic_SUST` 工作目录取得用户分支；原 `/workspace/DailyNic_HMOS` 保留在 `3b7852b`，原配置、密钥和 HAP 未覆盖。
 
@@ -50,9 +52,9 @@ python -m unittest discover -s tests -p test_sust_import.py -v
 
 **用户需先知情并自行完成**：安装/更新 DevEco 或 SDK（如需要）、启用开发者模式/USB 调试、信任连接电脑、设备验证、任何费用确认。这些改变系统设置或账号状态的步骤本次均未执行。不要关闭证书校验、使用第三方代签、共享证书密码或借用他人设备 Profile。
 
-本地 `build-profile.json5`、`local.properties`、`.p12/.pfx/.p7b/.cer/.pem/.key`、密码和会话信息不能进入 Git。不要通过聊天发送签名密码、私钥、账号 Cookie 或完整配置截图。调试签名完成后，使用 IDE Run 安装并启动到用户手机；也可由本人用已配置 HDC 安装其生成的**已签名** HAP。未签名 HAP 不能当作可安装交付。当前没有执行任何安装。
+本地 `build-profile.json5`、`local.properties`、`.p12/.pfx/.p7b/.cer/.pem/.key`、密码和会话信息不能进入 Git。不要通过聊天发送签名密码、私钥、账号 Cookie 或完整配置截图。调试签名完成后，使用 IDE Run 安装并启动到用户手机；也可由本人用已配置 HDC 安装其生成的**已签名** HAP。未签名 HAP 不能当作可安装交付。当前个人调试安装记录见本文顶部与设备验证文档。
 
-## 真机验收清单（全未执行）
+## 真机验收清单（执行状态见 DEVICE-VALIDATION.md）
 
 | 场景 | 必须观察的结果 |
 | --- | --- |

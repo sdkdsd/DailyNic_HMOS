@@ -35,7 +35,7 @@ export const LINK: LinkSet[] = [
     { title: '本地课表', url: [{ url: 'Schedule', notUrl: true }], icon: $r('app.media.KeChengBiao') },
     { title: '本地考试', url: [{ url: 'ExamDetail', notUrl: true }], icon: $r('app.media.KaoShiXinXi') },
     { title: '课时与校历设置', url: [{ url: 'CampusSetup', notUrl: true }], icon: $r('app.media.calendar') },
-    { title: '在线同步 · 未适配', url: [{ url: 'GetSchedule', notUrl: true }], icon: $r('app.media.cloud_download') },
+    { title: '联网获取课表', url: [{ url: 'GetSchedule', notUrl: true }], icon: $r('app.media.cloud_download') },
     { title: '选课目录 / 教室 · 未适配', url: [{ url: 'GetClassByName', notUrl: true }], icon: $r('app.media.GongGongChaXun') }
   ] },
   { title: '校园服务（官方网页）', set: [

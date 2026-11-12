@@ -7,6 +7,16 @@ const parser = await loadLogic('utils/SustOnline.ets', {});
 const p = parser.module;
 const script = (await loadLogic('utils/SustTableScript.ts', {})).module.SUST_READ_TABLE_SCRIPT;
 const cell = (text='',rowspan=1) => ({text,rowspan,colspan:1});
+test('EAMS HTTP redirect upgrades exact-host main-frame GET only, with no POST replay',()=>{
+  const path='/eams/login.action;jsessionid=SYNTHETIC?service=%2Feams%2F';
+  assert.equal(p.secureSchoolRedirect('http://bkjw.sust.edu.cn'+path,'GET',true),'https://bkjw.sust.edu.cn'+path);
+  assert.equal(p.secureSchoolRedirect('http://login.sust.edu.cn/cas/login','GET',true),'https://login.sust.edu.cn/cas/login');
+  for (const url of ['http://bkjw.sust.edu.cn.evil.test/','http://bkjw.sust.edu.cn@evil.test/','http://bkjw.sust.edu.cn:8080/','http://my.sust.edu.cn/','https://bkjw.sust.edu.cn/']) {
+    assert.equal(p.secureSchoolRedirect(url,'GET',true),'');
+  }
+  assert.equal(p.secureSchoolRedirect('http://bkjw.sust.edu.cn/eams/login.action','POST',true),'');
+  assert.equal(p.secureSchoolRedirect('http://bkjw.sust.edu.cn/eams/login.action','GET',false),'');
+});
 const headings=['序号','课程代码','课程名称','学分','课程序号','教师','备注','操作'];
 function fixture(kind='学生课表', code='100.01', day=1, start=1, text='(1-4,合成教室)') {
   const data={kind,week:'全部',semester:'2026-2027学年1学期',weekCount:20,
@@ -56,7 +66,18 @@ test('DOM reader extracts table data without touching credentials, account links
   Object.defineProperty(ctx.document,'cookie',{get(){assert.fail('cookie access');}});
   const result=JSON.parse(vm.runInNewContext(script,ctx));
   assert.deepEqual(result,f);
-  ctx.location.origin='https://login.sust.edu.cn';assert.throws(()=>vm.runInNewContext(script,ctx));
+  ctx.location.pathname='/eams/courseTableForStd.action;jsessionid=SYNTHETIC';
+  assert.deepEqual(JSON.parse(vm.runInNewContext(script,ctx)),f);
+  ctx.location.pathname='/eams/courseTableForStd!courseTable.action';
+  assert.deepEqual(JSON.parse(vm.runInNewContext(script,ctx)),f);
+  const lookup=ctx.document.getElementById;
+  ctx.document.getElementById=()=>null;
+  assert.equal(JSON.parse(vm.runInNewContext(script,ctx)).readError,'table');
+  ctx.document.getElementById=lookup;
+  ctx.location.pathname='/outside';
+  assert.equal(JSON.parse(vm.runInNewContext(script,ctx)).readError,'path');
+  ctx.location.origin='https://login.sust.edu.cn';assert.equal(JSON.parse(vm.runInNewContext(script,ctx)).readError,'origin');
+  assert.equal(p.schedulePageAllowed('https://bkjw.sust.edu.cn/eams/courseTableForStd.action;jsessionid=SYNTHETIC?x=1'),true);
   for(const url of ['http://bkjw.sust.edu.cn/eams/','https://bkjw.sust.edu.cn.evil.test/','https://login.sust.edu.cn@evil.test/','javascript:alert(1)']) assert.equal(p.schoolNavigationAllowed(url),false);
   assert.equal(p.schoolNavigationAllowed('https://login.sust.edu.cn/cas/login'),true);
   assert.equal(p.schedulePageAllowed('https://bkjw.sust.edu.cn/eams/stdElectCourse.action'),false);

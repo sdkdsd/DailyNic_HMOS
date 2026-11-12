@@ -5,6 +5,7 @@ export interface VisibleCell { text: string; rowspan: number; colspan: number; }
 export interface VisibleSchedule {
   kind: string; week: string; semester: string; weekCount: number;
   rows: VisibleCell[][]; catalog: string[][];
+  readError?: string;
 }
 export interface ParsedSchedule { courses: classAttribute[]; cancelled: classAttribute[]; }
 export interface OnlinePreview { courses: classAttribute[]; duplicates: number; cancelled: number; }
@@ -12,8 +13,14 @@ export const SUST_TABLE_URL: string = 'https://bkjw.sust.edu.cn/eams/courseTable
 export function schoolNavigationAllowed(url: string): boolean {
   return /^https:\/\/(?:bkjw|login|my)\.sust\.edu\.cn(?::443)?(?:\/|$)/.test(url);
 }
+// EAMS sends an HTTP Location even when entered over HTTPS. Upgrade only a
+// main-frame GET on the exact verified EAMS/CAS hosts; never replay a credential POST.
+export function secureSchoolRedirect(url: string, method: string, mainFrame: boolean): string {
+  if (!mainFrame || method !== 'GET' || !/^http:\/\/(?:bkjw|login)\.sust\.edu\.cn(?:\/|$)/.test(url)) return '';
+  return 'https://' + url.substring('http://'.length);
+}
 export function schedulePageAllowed(url: string): boolean {
-  return /^https:\/\/bkjw\.sust\.edu\.cn(?::443)?\/eams\/courseTableForStd\.action(?:[?#]|$)/.test(url);
+  return /^https:\/\/bkjw\.sust\.edu\.cn(?::443)?\/eams\/courseTableForStd\.action(?:;jsessionid=[A-Za-z0-9._-]+)?(?:[?#]|$)/.test(url);
 }
 function check(ok: boolean, message: string): void { if (!ok) throw new Error(message); }
 export function parseSchoolWeeks(text: string, maximum: number): number[] {

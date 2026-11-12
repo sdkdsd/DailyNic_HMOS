@@ -1,7 +1,9 @@
 // Fixed, read-only DOM extraction. Only visible timetable cells and term/filter controls.
 // Never extracts document HTML, scripts, links, storage, hidden inputs or login fields.
 export const SUST_READ_TABLE_SCRIPT: string = `(() => {
-  if (location.origin !== 'https://bkjw.sust.edu.cn' || location.pathname !== '/eams/courseTableForStd.action') throw Error('page');
+  try {
+  if (location.origin !== 'https://bkjw.sust.edu.cn') throw Error('origin');
+  if (!location.pathname.startsWith('/eams/')) throw Error('path');
   const visible = e => e && e.getClientRects().length > 0;
   const kind = document.getElementById('courseTableType');
   const week = document.getElementById('startWeek');
@@ -19,4 +21,8 @@ export const SUST_READ_TABLE_SCRIPT: string = `(() => {
     rows:Array.from(table.rows).map(r=>Array.from(r.cells).map(c=>({text:c.innerText.trim(),rowspan:c.rowSpan,colspan:c.colSpan}))),
     catalog:Array.from(catalogs[0].rows).map(r=>Array.from(r.cells).map((c,i)=>i>=6?'':c.innerText.trim()))
       .map((r,i)=>i===0?headings:r)});
+  } catch(e) {
+    const known = ['origin','path','table','catalog','weeks'];
+    return JSON.stringify({readError: known.includes(e.message) ? e.message : 'script'});
+  }
 })()`;
