@@ -1,7 +1,7 @@
 import { fileIo } from '@kit.CoreFileKit';
 import type { LearningSnapshot, LearningPage, LearningTask } from './LearningTasks';
 import { emptyLearningSnapshot, validateLearningSnapshot,
-  mergeLearningPage, pendingLearningTasks, learningTime } from './LearningTasks';
+  mergeLearningPage, pendingLearningTasks, uncertainLearningTasks, learningTime } from './LearningTasks';
 
 let dataPath: string = '';
 export function initLearningStorage(context: Context): void { dataPath = `${context.filesDir}/learningTasks.json`; }
@@ -12,14 +12,15 @@ export function getLearningSnapshot(): LearningSnapshot {
   validateLearningSnapshot(snapshot);
   return snapshot;
 }
-export interface LearningView { tasks: LearningTask[]; summary: string; }
+export interface LearningView { tasks: LearningTask[]; uncertain: LearningTask[]; summary: string; }
 export function getLearningView(): LearningView {
   try {
     const s = getLearningSnapshot();
-    const tasks = pendingLearningTasks(s);
-    return { tasks, summary: s.homeworkAt || s.examAt ?
-      `作业：${s.homeworkAt ? learningTime(s.homeworkAt) : '尚未读取'}\n考试：${s.examAt ? learningTime(s.examAt) : '尚未读取'}\n${tasks.length ? '以下为最近读取状态' : '最近读取记录中暂无待办'}，可联网更新。` : '尚未同步学习通作业和考试' };
-  } catch (_) { return { tasks: [], summary: '学习通缓存无法读取，原文件保留；请反馈此提示。' }; }
+    const now = Date.now();
+    const tasks = pendingLearningTasks(s, now);
+    return { tasks, uncertain: uncertainLearningTasks(s, now), summary: s.homeworkAt || s.examAt ?
+      `作业：${s.homeworkAt ? learningTime(s.homeworkAt) : '尚未读取'}\n考试：${s.examAt ? learningTime(s.examAt) : '尚未读取'}\n已结束或到期的事项不再显示，可联网更新。` : '尚未同步学习通作业和考试' };
+  } catch (_) { return { tasks: [], uncertain: [], summary: '学习通缓存无法读取，原文件保留；请反馈此提示。' }; }
 }
 export interface LearningPreview { baseline: string; snapshot: LearningSnapshot; capturedAt: number; count: number; }
 export function prepareLearningUpdate(page: LearningPage, capturedAt: number): LearningPreview {

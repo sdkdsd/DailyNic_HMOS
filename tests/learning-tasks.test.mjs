@@ -9,6 +9,14 @@ const row = (id = '101', status = '未提交', remaining = '1天2小时3分钟')
   ({ id, title: '合成作业', course: '合成课程', status, remaining });
 const page = (rows = [row()], kind = 'homework') => ({ kind, rows });
 
+test('expired tasks leave the live todo view without deleting cached records', () => {
+  const s = logic.mergeLearningPage(logic.emptyLearningSnapshot(), page([row('501', '未交', '1分钟')]), now);
+  assert.equal(logic.pendingLearningTasks(s, now + 59999).length, 1);
+  assert.equal(logic.pendingLearningTasks(s, now + 60000).length, 0);
+  assert.equal(s.tasks.length, 1);
+  assert.equal(s.tasks[0].status, '未交');
+});
+
 test('learning deadlines preserve Beijing time, zero remaining and unknown due dates', () => {
   assert.equal(logic.learningTime(now), '2026-11-12 12:00');
   assert.equal(logic.learningDeadline('1天2小时3分钟', now), now + 93780000);
@@ -27,13 +35,14 @@ test('source IDs separate exams from homework and repeated reads update rather t
   assert.equal(s.tasks[0].dueAt, now + 1000 + 2 * 86400000);
   s = logic.mergeLearningPage(s, page([row('101', '未开始')], 'exam'), now + 2000);
   assert.equal(s.tasks.length, 2);
-  assert.equal(logic.pendingLearningTasks(s).length, 2);
+  assert.equal(logic.pendingLearningTasks(s, now).length, 2);
 });
 
-test('unsubmitted exams remain actionable without inventing a deadline or completed status', () => {
+test('unsubmitted exams without deadlines remain stored but require review', () => {
   const tasks = logic.parseLearningPage(page([row('202', '未交', ''), row('203', '未提交', '')], 'exam'), now);
   assert.equal(tasks.length, 2);
   assert.ok(tasks.every(t => t.active && t.dueAt === 0));
+  assert.ok(tasks.every(t => logic.learningTaskDisposition(t, now) === 'uncertain'));
 });
 
 test('waiting or reading twice does not move a server-rendered deadline; stale pages must refresh', () => {
@@ -49,10 +58,10 @@ test('waiting or reading twice does not move a server-rendered deadline; stale p
 test('explicit submitted or ended statuses retire tasks, absent rows retain prior observed state', () => {
   let s = logic.mergeLearningPage(logic.emptyLearningSnapshot(), page([row('1'), row('2')]), now);
   s = logic.mergeLearningPage(s, page([row('1', '待批阅')]), now + 1000);
-  assert.deepEqual(logic.pendingLearningTasks(s).map(x => x.id), ['homework:2']);
+  assert.deepEqual(logic.pendingLearningTasks(s, now).map(x => x.id), ['homework:2']);
   assert.equal(s.tasks.find(x => x.id === 'homework:2').observedAt, now);
   s = logic.mergeLearningPage(s, page([row('2', '已结束')]), now + 2000);
-  assert.equal(logic.pendingLearningTasks(s).length, 0);
+  assert.equal(logic.pendingLearningTasks(s, now).length, 0);
   assert.equal(s.tasks.find(x => x.id === 'homework:2').status, '已结束');
 });
 
@@ -125,4 +134,22 @@ test('preview writes nothing; atomic failure and stale concurrent previews prese
   assert.match(storage.getLearningView().summary, /无法读取/);
   assert.throws(() => storage.prepareLearningUpdate(page(), now + 5));
   assert.equal(fs.files.get('/learning/learningTasks.json'), '{damaged');
+});
+
+
+test('ended, unknown and explicitly unlimited deadlines are not conflated', () => {
+  const s = logic.mergeLearningPage(logic.emptyLearningSnapshot(), page([
+    row('601', '未交', '已结束'), row('602', '未交', '已截止'),
+    row('603', '未交', ''), row('604', '未交', '--'),
+    row('605', '未交', '不限'), row('606', '待批阅', '不限'),
+    row('607', '未交', '0分钟')
+  ]), now);
+  assert.deepEqual(logic.pendingLearningTasks(s, now).map(t => t.id), ['homework:605']);
+  assert.deepEqual(logic.uncertainLearningTasks(s, now).map(t => t.id), ['homework:603', 'homework:604']);
+  assert.equal(s.tasks.length, 7);
+  const old = {...s, tasks: s.tasks.map(({deadlineState, ...t}) => t)};
+  logic.validateLearningSnapshot(old);
+  assert.equal(logic.pendingLearningTasks(old, now).length, 0);
+  const reopened = logic.mergeLearningPage(s, page([row('601', '未交', '2小时')]), now + 1000);
+  assert.ok(logic.pendingLearningTasks(reopened, now + 1000).some(t => t.id === 'homework:601'));
 });

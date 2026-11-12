@@ -6,6 +6,7 @@ export interface LearningPage { kind: string; rows: LearningRow[]; readError?: s
 export interface LearningTask {
   id: string; kind: string; title: string; course: string; status: string;
   active: boolean; dueAt: number; observedAt: number;
+  deadlineState?: string;
 }
 export interface LearningSnapshot { version: number; tasks: LearningTask[]; homeworkAt: number; examAt: number; }
 
@@ -58,8 +59,12 @@ export function parseLearningPage(page: LearningPage, capturedAt: number): Learn
     if (ids.includes(id)) throw new Error('duplicate');
     ids.push(id);
     const status = row.status.trim();
+    const remaining = row.remaining.replace(/\s/g, '').replace(/^剩余(?:时间)?[：:]?/, '');
+    const dueAt = learningDeadline(row.remaining, capturedAt);
+    const deadlineState = ['已截止', '已结束'].includes(remaining) ? 'ended' :
+      ['不限', '无截止时间'].includes(remaining) ? 'unlimited' : dueAt > 0 ? 'timed' : 'unknown';
     result.push({ id, kind: page.kind, title: row.title.trim(), course: row.course.trim(), status,
-      active: activeStatus(page.kind, status), dueAt: learningDeadline(row.remaining, capturedAt), observedAt: capturedAt });
+      active: activeStatus(page.kind, status), dueAt, deadlineState, observedAt: capturedAt });
   }
   return result;
 }
@@ -74,6 +79,8 @@ export function validateLearningSnapshot(snapshot: LearningSnapshot): void {
       !boundedText(t.title, 300) || !t.title.trim() || !boundedText(t.course, 300) ||
       !boundedText(t.status, 30) || typeof t.active !== 'boolean' || t.active !== activeStatus(t.kind, t.status) ||
       !Number.isFinite(t.dueAt) || t.dueAt < 0 || !Number.isFinite(t.observedAt) || t.observedAt <= 0) throw new Error('cache');
+    if (t.deadlineState !== undefined && (!['unknown', 'unlimited', 'ended', 'timed'].includes(t.deadlineState) ||
+      (t.deadlineState === 'timed') !== (t.dueAt > 0))) throw new Error('cache');
     ids.push(t.id);
   }
 }
@@ -88,7 +95,16 @@ export function mergeLearningPage(previous: LearningSnapshot, page: LearningPage
   validateLearningSnapshot(result);
   return result;
 }
-export function pendingLearningTasks(snapshot: LearningSnapshot): LearningTask[] {
-  return snapshot.tasks.filter((t: LearningTask) => t.active).sort((a: LearningTask, b: LearningTask) =>
+// Legacy zero-deadline caches are unknown, never evidence of an unlimited task.
+export function learningTaskDisposition(task: LearningTask, now: number): string {
+  if (!task.active || task.deadlineState === 'ended' || (task.dueAt > 0 && task.dueAt <= now)) return 'closed';
+  if (task.dueAt > now || task.deadlineState === 'unlimited') return 'pending';
+  return 'uncertain';
+}
+export function pendingLearningTasks(snapshot: LearningSnapshot, now: number = Date.now()): LearningTask[] {
+  return snapshot.tasks.filter((t: LearningTask) => learningTaskDisposition(t, now) === 'pending').sort((a: LearningTask, b: LearningTask) =>
     (a.dueAt || Number.MAX_SAFE_INTEGER) - (b.dueAt || Number.MAX_SAFE_INTEGER));
+}
+export function uncertainLearningTasks(snapshot: LearningSnapshot, now: number = Date.now()): LearningTask[] {
+  return snapshot.tasks.filter((t: LearningTask) => learningTaskDisposition(t, now) === 'uncertain');
 }

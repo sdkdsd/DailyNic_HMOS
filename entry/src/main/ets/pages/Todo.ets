@@ -68,6 +68,7 @@ struct TodoPage {
   /** 当前列表（已过滤、已按有效时间升序），index 为原始数组下标 */
   @State todoList: IndexedTodoItem[] = [];
   @State learningTasks: LearningTask[] = [];
+  @State uncertainLearningTasks: LearningTask[] = [];
   @State learningSummary: string = '';
   /** 过滤类型：-1 全部，其余为 TodoType */
   @State filterType: number = -1;
@@ -127,6 +128,7 @@ struct TodoPage {
   refresh(): void {
     const learning = getLearningView();
     this.learningTasks = learning.tasks;
+    this.uncertainLearningTasks = learning.uncertain;
     this.learningSummary = learning.summary;
     // SegmentButton 的颜色保存在 options 中，主题变化时需手动同步
     const accent = presetColor[BackgroundImage.themeColor].accentColor;
@@ -1066,7 +1068,7 @@ struct TodoPage {
   build() {
     NavDestination() {
       Column() {
-        LearningTaskList({ tasks: this.learningTasks, summary: this.learningSummary,
+        LearningTaskList({ tasks: this.learningTasks, uncertain: this.uncertainLearningTasks, summary: this.learningSummary,
           onSync: () => { this.pathStack.pushPath({ name: 'GetHomework' }); } })
         Column({ space: 8 }) {
           // 搜索框 + 筛选栏开关

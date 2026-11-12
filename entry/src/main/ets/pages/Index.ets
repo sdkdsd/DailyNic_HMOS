@@ -354,10 +354,12 @@ struct Index {
    */
   @State todoList: IndexedTodoItem[] = [];
   @State learningTasks: LearningTask[] = [];
+  @State uncertainLearningTasks: LearningTask[] = [];
   @State learningSummary: string = '';
   refreshTodo(): void {
     const learning = getLearningView();
     this.learningTasks = learning.tasks;
+    this.uncertainLearningTasks = learning.uncertain;
     this.learningSummary = learning.summary;
     const list = filterItems((item: TodoItem): boolean => !item.done && !item.submitted);
     list.sort((a: IndexedTodoItem, b: IndexedTodoItem): number =>
@@ -866,7 +868,7 @@ struct Index {
 
           if (this.showTodo) {
             Divider();
-            LearningTaskList({ tasks: this.learningTasks, summary: this.learningSummary,
+            LearningTaskList({ tasks: this.learningTasks, uncertain: this.uncertainLearningTasks, summary: this.learningSummary,
               onSync: () => { this.pageInfo.pushPath({ name: 'GetHomework' }); } })
             Divider();
             if (this.todoList.length === 0) {

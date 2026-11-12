@@ -1,6 +1,6 @@
 import { webview } from '@kit.ArkWeb';
 import { LearningPage, LearningTask, LEARNING_HOMEWORK_URL, LEARNING_EXAM_URL,
-  learningNavigationAllowed, learningTime, learningReadTime } from '../utils/LearningTasks';
+  learningNavigationAllowed, learningTime, learningReadTime, learningTaskDisposition } from '../utils/LearningTasks';
 import { LEARNING_READ_SCRIPT } from '../utils/LearningScript';
 import { LearningPreview, prepareLearningUpdate, confirmLearningUpdate } from '../utils/LearningStorage';
 
@@ -48,7 +48,7 @@ struct LearningPageView {
       this.rows.sort((a: LearningTask, b: LearningTask) => Number(b.active) - Number(a.active) ||
         (a.dueAt || Number.MAX_SAFE_INTEGER) - (b.dueAt || Number.MAX_SAFE_INTEGER));
       this.count = this.pending.count;
-      this.activeCount = this.rows.filter((t: LearningTask) => t.active).length;
+      this.activeCount = this.rows.filter((t: LearningTask) => learningTaskDisposition(t, capturedAt) === 'pending').length;
       this.previewOpen = true;
     } catch (error) {
       this.pending = null;
@@ -66,7 +66,7 @@ struct LearningPageView {
   @Builder Preview() {
     Column({ space: 12 }) {
       Text(`核对${this.count}条记录 · ${this.activeCount}条待办`).fontSize(20).fontWeight(FontWeight.Bold)
-      Text('仅更新本页已读取的事项。已提交或已结束的条目不再显示为待办；未读到的旧事项保留。').fontSize(13)
+      Text('已结束或到期事项退出待办；期限不明的收进“待核实”。仅更新本页记录，未读到的旧记录保留。').fontSize(13)
       Scroll() {
         Column({ space: 12 }) {
           ForEach(this.rows, (task: LearningTask) => {
@@ -74,7 +74,8 @@ struct LearningPageView {
               Text(task.title).fontWeight(FontWeight.Bold)
               Text(`${task.course} · ${task.status}`).fontSize(13)
               Text(task.dueAt ? `约截止于 ${learningTime(task.dueAt)}（北京时间）` : '页面未提供截止时间').fontSize(13)
-              Text(task.active ? '显示在待办' : '不再显示在待办').fontSize(12)
+              Text(learningTaskDisposition(task, Date.now()) === 'pending' ? '显示在待办' :
+                learningTaskDisposition(task, Date.now()) === 'uncertain' ? '收进待核实，不显示在主待办' : '不再显示在待办').fontSize(12)
             }.width('100%').alignItems(HorizontalAlign.Start)
           }, (task: LearningTask) => JSON.stringify(task))
         }.width('100%')
